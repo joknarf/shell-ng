@@ -1,0 +1,519 @@
+######## powerline-awk ##########
+# Author: Franck Jouvanceau
+# Powerline prompt with AWK (bash/zsh/ksh)
+# echo "loading $ps1_tmp" >&2
+[ "$1" ] && unset ps1_loaded
+[ "$ps1_loaded" ] && return 0
+ps1_loaded=1
+
+ps1_nfstyle="(/auto:exit_status (/lblack:elapse (/blue:userhost )/auto:git_branch )/lblack:cwd > | (/lblue/black/blue:info (/auto:addon (/magenta/white:venv (/auto:dfcheck (/auto:loadavg (/auto:freemem (/blue:time )"
+ps1_nfstyle2="(/auto:exit_status (/lblack:elapse (/blue:userhost )/lblack:cwd >/auto:git_branch > | (/lblue/black/blue:info (/auto:addon (/magenta/white:venv (/auto:dfcheck (/auto:loadavg (/auto:freemem (/blue:time )"
+ps1_pfstyle="/auto:exit_status /lblack:elapse /blue:userhost >/auto:git_branch >/lblack:cwd > | </lblue/black/blue:info </auto:addon </magenta/white:venv </auto:dfcheck </auto:loadavg </auto:freemem </blue:time >"
+
+# overiddable vars in your env or .nerdrc
+#: "${ps1_info_eval:="$(echo uid:$(id -u))"}"
+: "${ps1_info_vars:="client_id ORACLE_SID"}"
+: "${ps1_info:=""}"       # var to add variables to info zone
+: "${ps1_git_status:=1}"  # 0 to disable git status
+: "${ps1_exit_colors:="green red"}"
+: "${ps1_git_colors:="green yellow/black"}"
+: "${ps1_blank_line:=1}"
+: "${ps1_fslist:="/ /tmp"}" # put "-l" to have all local FS check
+: "${ps1_fslimits:="95 100"}"
+: "${ps1_loadlimits:="10 20"}"
+: "${ps1_memlimits:="300 100"}"
+: "${ps1_url:=https://raw.githubusercontent.com/joknarf/nerdps1/main/nerdps1}"
+: "${ps1_powerline:=$ps1_nfstyle}"
+: "${ps1_display:=nerd}" # nerdicons/powerline/nofont/ascii
+: "${ps1_sshmode:=raw}" # pssh mode (1:raw 2:b64 3:cfg 4:url)
+
+#=========================
+type typeset >/dev/null 2>&1 || alias typeset=local # ash
+[ -x /bin/nawk ] && ps1_awk=nawk || ps1_awk=awk
+echo ok |base64 -w 0 >/dev/null 2>&1 && ps1_b64opt="-w0"
+[ "$BB_ASH_VERSION" ] || typeset -F SECONDS
+#=========
+
+function ps1_get_mseconds
+{
+    typeset s ms __
+    [ -r /proc/uptime ] && [ ! "$ps1_use_seconds" ] && {
+        read -r s __ </proc/uptime
+        echo "${s/[.]/}"
+        return
+    }
+    s=$(LANG=C; echo "$SECONDS")
+    ms="${s#*.}" 
+    [ "$ms" = "$s" ] && ms="00"
+    ms="${ms:0:2}"
+    s="${s%.*}"
+    echo "$s$ms"
+}
+
+function ps1_time_cmd
+{
+    # echo "trap ${.sh.level} ${.sh.name} #${.sh.command%%=*}# $__ps1_sec" >&2
+    [ "$KSH_VERSION" ] && [ "${.sh.command%%=*}" = ".sh.subscript" ] && return #first prompt
+    [ "$__ps1_sec" = -1 ] && __ps1_sec=$(ps1_get_mseconds) && return
+    return 0
+}
+
+function ps1_calc_elapse
+{
+    typeset seconds h m s end ms=0
+
+    end=$(ps1_get_mseconds)
+    seconds=$(($end - $__ps1_sec))
+    ms=$(($seconds%100))
+    seconds=$((seconds/100))
+    [ $seconds = 0 ] && return
+    [ $seconds -lt 60 ] && {
+        [ "$ms" = 0 ] && printf "%ss" "$seconds" || printf '%d.%02ds' "$seconds" "$ms"
+        return
+    }
+    m=$((seconds%3600/60))
+    s=$((seconds%60))
+    [ $seconds -lt 3600 ] && printf "%dm%02ds" $m $s && return
+    h=$((seconds/3600))
+    printf "%dh%02dm%02ds" $h $m $s && return
+}
+
+function ps1_elapse
+{
+    : "${__ps1_sec:=-1}"
+    [ "$__ps1_sec" = -1 ] && return
+    ps1_calc_elapse
+}
+
+function ps1_pwline {
+    : ${COLUMNS:=$(stty size 2>/dev/null)} # ash no $COLUMNS
+    COLUMNS=${COLUMNS#* }
+    : "${ps1_colors:="blue lblack green yellow/black lblue/black"}" # just some defaults
+    $ps1_awk -v pcol="$ps1_colors" -v columns="$COLUMNS" -v nopw="$ps1_nopw" -v kshbug="$ps1_kshbug" '
+    function init_symbols(  symbols,ts) {
+        if (nopw==0) {
+            icons["warn"] = ""#
+            icons["error"] = ""#
+            icons["ok"] = ""
+        }
+        symbols[0] = "_                                                                          "
+        symbols[1] = symbols[0]
+        symbols[2] = "_                                                                          "
+        symbols[3] = "_ • • • •   • • • •   • • • •   • • • •   • • • •  • • • •   • • • •   • • • •  • • • •   • • • •   • • • •   • • • •   • • • •"
+        symbols[4] = ""
+        chars   =      ">   <     )   (     L   l     U   u     F   f    D   d     M   m     G  g     P   p     B   b     N   n     C   c     R   r"
+        split(symbols[nopw],ts)
+        gpwidth = (ts[2]) ? 1 : 0
+        split(chars,tc)
+        for (i in tc) {
+            if (ARGV[1]=="symbols") print(tc[i],ts[i*2],ts[i*2+1])
+            sym[tc[i]] = ts[i*2]; sep[tc[i]] = ts[i*2+1]; rev[tc[i]] = (i+1)%2
+        }
+        if (ARGV[1]=="symbols") exit(0)
+    }
+    function init_colors() {
+        csi = "\033["
+        c = "black red green yellow blue magenta cyan white"
+        split(c, co)
+        for (i in co) {
+            colors[co[i]] = csi i+29 "m"
+            colors["l"co[i]] = csi i+89 "m"
+            colors["b"co[i]] = csi i+39 "m"
+            colors["bl"co[i]] = csi i+99 "m"
+        }
+        colors["reset_all"] = csi "0m"
+        colors["reset"] = csi "39m"
+        colors["breset"] = csi "49m"
+        colors["wrapoff"] = csi "?7l"
+        colors["wrapon"] = csi "?7h"
+    }
+    function getcols(info, j,   cinfo, colinfo, i) {
+        split(info, cinfo, ":")
+        split(cinfo[1], colinfo, "/")
+        i = 1
+        if (colinfo[i] == "") { i++; swidth[j] = 0; }
+        if (colinfo[i] in sym) {
+            symb[j] = colinfo[i++]
+            swidth[j] = gpwidth
+        }
+        if (!(colinfo[i] in colors)) {
+            split(pcols[j], colinfo, "/")
+            i = 1
+        }
+        bgs[j] = colinfo[i]
+        fgs[j] = colinfo[i+1] == "" ? "lwhite" : colinfo[i+1]
+        sepc[j] = colinfo[i+2]
+        icos[j] = icons[colinfo[i+3]]
+    }
+    function gettext(info) {
+        sub("[^:]*:", "", info)
+        gsub("[|]+[|]", "|", info)
+        gsub("^[|]|[|]$","", info)
+        gsub("[|]", " | ", info)
+        gsub("^ +| +$", "", info)
+        return info
+    }
+    BEGIN {
+        init_colors()
+        init_symbols()
+        split(pcol, pcols, " ")
+        printf("\r%s%s", colors["wrapoff"], colors["black"])
+        j=1
+        for (i=1;i<ARGC;i++) {
+            if (ARGV[i] == "|" || (ARGV[i] in sym)) {
+                txt[j] = ARGV[i]
+                symb[j] = ARGV[i]
+                swidth[j] = gpwidth
+                j++
+                continue
+            }
+            text = gettext(ARGV[i])
+            if (text == "" || text == ARGV[i]) continue
+            txt[j] = text
+            getcols(ARGV[i], j)
+            j++
+        }
+        txtc = j
+        for (i=1;i<txtc;i++) {
+            if (txt[i] == "" ) continue
+            if (txt[i] == "|") {
+                printf("%s", colors["black"])
+                emptywidth = columns - width -1 # avoid last column for resize
+                for(j=txtc-1;j>i;j--) {
+                    if (txt[j] in sym)
+                        if (emptywidth - length(txt[j-1]) > 2+swidth[j])
+                            emptywidth -= swidth[j]
+                        else
+                            delete txt[j]
+                    else if (emptywidth - length(txt[j]) - ((icos[j]=="")?0:1) > 2+swidth[j])
+                        emptywidth -= length(txt[j]) + 2 + ((icos[j]=="")?0:1) + swidth[j]
+                    else
+                        delete txt[j]
+                }
+                if (kshbug=="1") {printf("\n"); system("tput cuf " width+emptywidth)}
+                else for(j=0;j<emptywidth;j++) printf(" ") # printf("%*s", emptywidth, " ") not busybox compatible
+                continue
+            }
+            if (txt[i] == symb[i]) { bgs[i]="reset"; width+=swidth[i] }
+            else width += length(txt[i]) + 2 + ((icos[i]=="")?0:1) + swidth[i]
+            gsub("[|]", colors[sepc[i]] sep[symb[i]] colors[fgs[i]], txt[i])
+            if (rev[symb[i]]) {
+                printf("%s", colors[bgs[i]] sym[symb[i]])
+                if (txt[i] != symb[i])
+                    printf("%s", colors[fgs[i]] colors["b"bgs[i]] icos[i] " " txt[i] " " colors[bgs[i]])
+            } else {
+                printf("%s", colors["b"bgs[i]] sym[symb[i]])
+                if (txt[i] != symb[i])
+                    printf("%s", colors[fgs[i]] icos[i] " " txt[i] " " colors["reset_all"] colors[bgs[i]] colors["b"bgs[i]])
+            }
+        }
+        printf("%s%s\n", colors["reset_all"], colors["wrapon"])
+    }' "$@"
+}
+
+
+function ps1_git_branch {
+    typeset git_head i git_branch git_status
+    git_head=.git/HEAD
+    for i in . . . . . .;do
+        [ -r "$git_head" ] && break
+        git_head="../$git_head"
+    done
+    [ ! -r "$git_head" ] && return
+    git_branch=$(sed -e 's#.*/##' "$git_head")
+    [ "$ps1_git_status" = 0 ] && echo "${ps1_git_colors% *}:$git_branch" && return
+    git_status=$(LANG=C git status -uno --no-ahead-behind 2>/dev/null)
+    [ $? = 129 ] && git_status=$(LANG=C git status -uno 2>/dev/null)
+    git_status=${git_status##*
+}
+    [[ "$git_status" = "nothing to commit"* ]] && echo "${ps1_git_colors% *}:$git_branch" || echo "${ps1_git_colors#* }:$git_branch"
+}
+
+function ps1_userhost {
+    typeset hostname
+    hostname=$(uname -n)
+    echo "$USER@${hostname%%.*}"
+}
+
+function ps1_cwd {
+    typeset spwd cols
+    spwd=$PWD
+    cols=${COLUMNS:-80}
+    case "$PWD" in "$HOME"|"$HOME"/*) spwd="~${PWD#"$HOME"}";; esac
+    [ ${#spwd} -gt $(($cols-30)) ] && spwd="${spwd:0:7}...${spwd:$((${#spwd}-$cols-40))}"
+    echo "$spwd"
+}
+
+function ps1_exit_status {
+    [ "$2" ] && [ "$__ps1_cmd" = "$2" ] && echo "${ps1_exit_colors% *}:" && return
+    [ "$__ps1_noexec" ] && echo "${ps1_exit_colors% *}:" && return
+    [ "$1" = 0 ] && echo "${ps1_exit_colors% *}:"|| echo "${ps1_exit_colors#* }///error:$1"
+}
+
+function ps1_dfcheck {
+    [ ! "$ps1_fslist" ] && return
+    df -Pk $ps1_fslist 2>/dev/null |$ps1_awk -v limits="$ps1_fslimits" -v pct="${ZSH_VERSION+%}" '
+    BEGIN { split(limits, lim); }
+    NR>1 {
+        fs = $NF
+        if (fsch[fs]) next
+        fsch[fs] = 1
+        used=$(NF-1)+0
+        if (used >= lim[2]+0) { alert++; msg=msg" "fs":"used"%"pct; next; }
+        if (used >= lim[1]+0) { warn++; msg=msg" "fs":"used"%"pct}
+    }
+    END {
+        if (alert) { print("red/white//error:"msg); exit(1); }
+        if (warn) { print("yellow/black//warn:"msg); exit(1); }
+    }'
+}
+# zsh
+function ps1_preexec {
+    __ps1_preexec=1
+    __ps1_sec=$(ps1_get_mseconds)
+}
+
+# zsh
+function ps1_precmd {
+    __ps1_clock=$(print -P %T)
+    [ "$__ps1_preexec" ] && {
+        unset __ps1_noexec
+        __ps1_elapse=$(ps1_calc_elapse)
+    } || {
+        __ps1_noexec=1
+        unset __ps1_elapse
+    }
+    unset __ps1_preexec
+}
+
+function ps1_info {
+    typeset infos i
+    infos=$(eval echo \""$ps1_info_eval"\")
+    # cannot use zsh ${=ps1_info_vars} as ksh error
+    [ "$ZSH_VERSION" ] && set -- $(echo "$ps1_info_vars") || set -- $ps1_info_vars
+    for i in "$@" $ps1_info;do
+        infos=$infos$(eval echo \"'|$'"$i"\")
+    done
+    echo "$infos"
+}
+
+type ps1_addon >/dev/null 2>&1 || ps1_addon() { :; }
+
+function ps1_uidprompt {
+    [ "$USER" = root ] && echo '#' || echo '$'
+}
+
+function ps1_freemem {
+    typeset cmd
+    [ -x /usr/bin/vm_stat ] && cmd='vm_stat'
+    [ -r /proc/meminfo ] && cmd='cat /proc/meminfo'
+    [ ! "$cmd" ] && [ -r /var/run/dmesg.boot ] && cmd='grep avail.memory /var/run/dmesg.boot'
+    [ ! "$cmd" ] && return
+    eval "$cmd" |$ps1_awk -v limits="$ps1_memlimits" '
+        /MemAvailable:/ { avail = $2 }
+        /Buffer:|Cached:|MemFree:/ { free += $2 }
+        /page size of/ { ps=$(NF-1) }
+        /^Pages (free|inactive|purgeable|speculative):/{ free += (($NF * ps) / 1024) }
+        /avail memory = /{ avail = $4/1024 }
+        END {
+            split(limits, lim)
+            split("K M G T P E Z Y", suff)
+            if (avail) free = avail
+            if (free=="") exit(1)
+            if (free<lim[2]*1024) color = "red///error"
+            else if (free<lim[1]*1024) color = "yellow/black//warn"
+            else color = "lblack"
+            for(i=1;i<=length(suff);i++) {
+                if (free > 1024) free/=1024
+                else break
+            }
+            if (free >= 100) free = sprintf("%s:%.0f%s", color, free, suff[i]);
+            else if (free>=10) free = sprintf("%s:%.1f%s", color, free, suff[i]);
+            else free = sprintf("%s:%.2f%s", color, free, suff[i]);
+            print(free)
+        }
+    ' ps=1
+}
+
+function ps1_loadavg {
+    [ "$WINDIR" ] && return #too long on emulated unix
+    typeset load loadint
+    [ -r /proc/loadavg ] && load=$(< /proc/loadavg) || {
+        load=$(LANG=C uptime)
+        load=${load#*load average*: }
+        load=${load//,/}
+    }
+    load=${load%% *}
+    loadint=${load%.*}
+    [ ! "$load" ] && return
+    [ "$loadint" -ge "${ps1_loadlimits#* }" ] && echo "red///error:$load" && return
+    [ "$loadint" -ge "${ps1_loadlimits% *}" ] && echo "yellow/black//warn:$load" && return
+    echo "green:$load"
+}
+
+function ps1_osinfo {
+    (
+        [ -f /etc/os-release ] && . /etc/os-release || {
+            [ -f /etc/redhat-release ] && ID=$($ps1_awk '{sub("Red","rhel", $1);sub("[.].*","",$(NF-1));print $1$(NF-1);exit(0);}' /etc/redhat-release)
+        }
+        : "${ID:=$(uname -s)}"
+        [ "$ID" = "Darwin" ] && ID=$(sw_vers |awk -F':\t*' '$1=="ProductName"{s=$2}$1=="ProductVersion"{v=$2}END{print s v}')
+        [ "$ID" = "SunOS" ] && ID=$(uname -r) && ID="solaris${ID#*.}"
+        ID="${ID%%.*}"
+        MAIN_VERSION_ID="${VERSION_ID%%.*}"
+        [ ${#MAIN_VERSION_ID} -le 3 ] && ID="$ID$MAIN_VERSION_ID"
+        echo "$ID" | tr '[A-Z]' '[a-z]'
+    )
+}
+
+function ps1_venv {
+    [ "$VIRTUAL_ENV" ] || return
+    typeset venv=${VIRTUAL_ENV/\/?(.)venv}
+    printf "%s" "${venv##*[/\\\\]}"
+}
+
+function ps1_prompt {
+    typeset mksh
+    [[ "$KSH_VERSION" = *MIRBSD* ]] && mksh=1
+    $ps1_awk -v bash="${BASH+1}" -v zsh="${ZSH_VERSION+1}" -v ash="${BB_ASH_VERSION+1}" -v mksh=$mksh 'BEGIN {
+        if (bash) {
+            prompt = "\\$"
+            pre = "\\[\033]0;\\h\007"
+            post = "${_:$((__ps1_cmd=\\#, __ps1_sec=-1, 0)):0}\\]"
+            cmd["exit_status"] = "$(ps1_exit_status $? \\#)"
+            cmd["userhost"] = "\\u@\\h"
+            cmd["cwd"] = "\\w"
+            cmd["time"] = "\\A"
+            cmd["prompt"] = "\\$"
+        } else if (zsh) {
+            prompt = "%(!.#.$)"
+            pre = "%{\033]0;%m\007"
+            post = "%}"
+            cmd["elapse"] = "$__ps1_elapse"
+            cmd["exit_status"] = "$(ps1_exit_status $?)"
+            cmd["userhost"] = "$(print -P %n@%m)"
+            cmd["time"] = "$__ps1_clock"
+            cmd["prompt"] = "%(!.#.$)"
+        } else {
+            pre="\033]0;$ps1_hostname\007"
+            prompt="$(ps1_uidprompt)"
+            post="${_:$((__ps1_cmd=$HISTCMD , __ps1_sec=-1 , 0)):0}"
+            if (ash||mksh) post=""
+            cmd["exit_status"] = "$(ps1_exit_status $? $HISTCMD)"
+            cmd["time"] = "$(date +%H:%M)"
+        }
+        printf("%s", pre)
+        printf("%s", "$(ps1_pwline ")
+        nb = split(ARGV[1], segments, " ")
+        for (i=1; i<=nb; i++) {
+            n = split(segments[i], info, ":")
+            if (n==1) {
+                printf("\"%s\" ", info[1])
+                continue
+            }
+            sep=":"
+            if (info[1]~/auto/) { sep = ""; sub("auto","",info[1]) }
+            if (info[2] in cmd)
+                printf("\"%s%s%s\" ", info[1], sep, cmd[info[2]])
+            else
+                printf("\"%s%s$(ps1_%s)\" ", info[1], sep, info[2])
+        }
+        print(")"post)
+        print(prompt " ")
+    }' "$@"
+}
+
+function ps1_style
+{
+    [ "$1" = "-h" ] && echo "usage: ps1_style <style>
+    <style> : atarist, lego, blur, blur2, flame, tesla, powerline, island" && return
+    typeset p p1 p2
+    case "$1" in
+        atarist) p=${ps1_nfstyle//[\(\)]\//u/};p=${p//[\)>]/U};;
+        lego)  p=${ps1_nfstyle//[\)>]/C};p1=${p%|*};p2=${p#*|};p="$p1|${p2//[\(]/C}";;
+        matrix)  p=${ps1_nfstyle//[\)]/M};p1=${p%|*};p2=${p#*|};p="$p1|${p2//[\(]/m}";;
+        blur) p=${ps1_nfstyle//[\)]/D};p1=${p%|*};p2=${p#*|};p="$p1|${p2//[\(]/d}";;
+        flame) p=${ps1_nfstyle//[\)]/F};p1=${p%|*};p2=${p#*|};p="$p1|${p2//[\(]/f}";;
+        tesla) p=${ps1_nfstyle//[\)]/G};p1=${p%|*};p2=${p#*|};p="$p1|${p2//[\(]/G}";;
+        powerline) p=${ps1_nfstyle/??blue:userhost/\/blue:userhost};p=${p%?};p=${p//\(/<};p=${p//\)/>};;
+        island|default) p=$ps1_nfstyle;;
+    esac
+    [ "$1" != atarist ] && [ "$1" != powerline ] && p="${p:0:$((${#p}-1))})"
+    ps1_powerline="$p"
+    ps1_set
+}
+
+function ps1_display
+{
+    [ "$1" = -h ] && {
+        echo "usage: ps1_display <option>"
+        echo "    <option>: nerdicons, nerd, powerline, nofont, ascii"
+        return
+    }
+
+    case "$1" in
+        "nerdicons") ps1_nopw=0;;
+        "nerd")      ps1_nopw=1;;
+        "powerline") ps1_nopw=2;;
+        "nofont")    ps1_nopw=3;;
+        "ascii")     ps1_nopw=4;;
+        *)           return;;
+    esac
+    ps1_display="$1"
+    return 0
+}
+
+# create powerline prompt
+function ps1_set {
+    VIRTUAL_ENV_DISABLE_PROMPT=1
+    ps1_osinfo="$(ps1_osinfo)"
+    if [ "$BASH" ];then
+        shopt -s checkwinsize 2>/dev/null
+        : "${PROMPT_DIRTRIM:=5}"
+    elif [ "$ZSH_VERSION" ];then
+        setopt PROMPT_SUBST
+    else
+        ps1_hostname=$(uname -n)
+        ps1_hostname=${ps1_hostname%%.*}
+        [ "$BB_ASH_VERSION$KSH_VERSION" ] || : "${ps1_kshbug:=1}"
+        [[ "$KSH_VERSION" = *2012* ]] && : "${ps1_kshbug:=1}"
+        : "${ps1_kshbug:=0}"
+    fi
+    [[ $(uname -r ) = *-ish ]] && : "${ps1_use_seconds:=1}"
+    PS1_OLD="$PS1"
+    PS1=$(ps1_prompt "$ps1_powerline")
+    [ "$ps1_blank_line" = 1 ] && PS1="
+$PS1"
+    return 0
+}
+
+function ps1_restore {
+    PS1="$PS1_OLD"
+}
+
+
+function ps1_phelp {
+    echo "usage: $1
+    -b : force bash shell
+    -g : skip load global profile (/etc/profile[.d])
+    -u : skip load <user> profile (~/.profile...)
+    $2"
+}
+
+ps1_display "$ps1_display"
+[ "$ps1_style" ] && ps1_style "$ps1_style" || ps1_set
+
+if [ "$ZSH_VERSION" ] ; then
+    autoload -Uz add-zsh-hook
+    add-zsh-hook preexec ps1_preexec
+    add-zsh-hook precmd ps1_precmd
+elif [ "$BASH" ] ; then
+    [[ "$BASH_VERSION" > "4.4" ]] && PS0='${_:$((__ps1_sec=$(ps1_get_mseconds), 0)):0}' || trap ps1_time_cmd DEBUG
+else
+    [ "$ps1_kshbug" = 0 ] && trap ps1_time_cmd DEBUG 2>/dev/null
+fi
+
+
+return 0
+
+####### end powerline-awk ########

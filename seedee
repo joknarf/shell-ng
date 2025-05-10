@@ -1,0 +1,493 @@
+#===============================================================
+# seedee:
+#   shell `cd`` command extensions for bash/ksh/zsh/ash
+#   dir history / subdir explore
+#   . ./seedee
+#   
+#   cd <dir> : change dir and push directory to CDHISTORYFILE
+#   cd -- [-a] [<pat> ...] : display/choose in dir history
+#     -a    : all dir history (CDNBDIRS without -a)
+#     <pat> : grep pattern to search in history
+#             if unique dir found, cd to dir
+#             multiple pattern will grep <pat>.*<pat>...
+#   cd - [-a] <pat> [<pat>...] : search and cd to first dir matching 
+#             <pat> in history
+#   cd + [<pat>...] : display choose subdirs or cwd
+#   cd ++ [<pat>...] : displau choose subdirs until depth 4
+#
+#   aliases `cd-` `cd--` `cd+` `cd++` instead of `cd <sign>` commands
+# 
+# environment vars:
+#   CDHISTORYFILE : default to ~/.cd_history
+#   CDNBDIRS      : default to 10 (nbdir history to display)
+#   CDINITDIRS    : add directories if $CDHISTORYFILE is empty
+#   CDPOWERLINE   : y or n powerline symbol usage
+#   CDHISTBIND    : key to bind cdhist to Esc-key (Alt-key) default "Shift-Down Ctrl-Down"
+#   CDLBIND       : key to bind cdlocate to Esc-key (Alt-key) default "Ctrl-Shift-Down"
+#================================================================
+
+unalias cd 2>/dev/null
+type typeset >/dev/null 2>/dev/null || alias typeset=local # ash
+touch ${CDHISTFILE:=~/.cd_history}
+: ${CDPOWERLINE:=y}
+: ${CDNBDIRS:=10}
+: ${CDCOMPLETE:=n}
+[[ "$(uname -r)" = *-ish ]] && {
+  : ${CDHISTBIND:='\e!'}
+  : ${CDLBIND:='\e*'}
+  : ${CDDOTBIND:='\e;'}
+}
+: ${CDHISTBIND:='\e[1;2B \e[1;5B'}
+: ${CDLBIND:='\e[1;6B'}
+: ${CDDOTBIND:='\e[1;2C \e[1;5C'}
+: ${CDUPBIND:='\e[1;2D \e[1;5D'}
+: ${CDLASTBIND:='\e[1;2A \e[1;5A'}
+
+[ "$BASH" ] && shopt -s extglob progcomp
+
+# change directory and updpate CDHISTFILE
+function cdpush {
+  typeset cdhf=${CDHISTFILE:-~/.cd_history} dir
+  case "$1" in 
+    --) shift; cdhist "$@"; return $?;;
+    -)  [ "$2" ] && { cdhist "$@"; return $?; };;
+    +)  shift; cdsub 1 . "$@"; return $?;;
+    ++) shift; cdsub 4 . "$@"; return $?;;
+  esac
+  dir="$1"
+  [ "$_cdpr" ] && {
+    [ "$_cdpr" = 1 ] && printf "cd %q" "$dir"
+    [ "$_cdpr" = 2 ] && printf "$dir"
+    return 0
+  }
+  \cd "$@" || return $?
+  printf "%s\n" "$PWD" >"$cdhf.tmp"
+  grep -Fxv -- "$PWD" "$cdhf" >>"$cdhf.tmp"
+  [ -s "$cdhf.tmp" ] && \mv "$cdhf.tmp" "$cdhf"
+  return 0
+}
+
+function cddelete
+{
+  typeset cdhf=${CDHISTFILE:-~/.cd_history}
+  [[ "$1" = \~* ]] && set -- "$HOME"${1#\~}
+  grep -Fxv -- "$1" "$cdhf" >"$cdhf.tmp"
+  [ -s "$cdhf.tmp" ] && \mv "$cdhf.tmp" "$cdhf"
+}
+
+function cdselect
+{
+  typeset dir nb="$1" filter="$3"
+  [ "$_cdpr" ] && {
+    [ "$BASH" ] && [ "$_cdpr" = 1 ] && tput el >&2
+    printf "\n" >&2
+  }
+  dir="$(selector -P "$CDPOWERLINE" -m "$nb" -p cd -k _cd_keys -F "$filter" -i "$2")"
+  [ "$_cdpr" ] && {
+    tput cuu1 >&2
+  }
+  [[ $dir = \~ || $dir = \~/* ]] && dir="$HOME"${dir#\~}
+  [ "$dir" ] && cdpush "$dir"
+}
+
+function _cdbrowse {
+  typeset dir="$1" depth=${2:-1}
+
+  [[ $dir = \~* ]] && dir="$HOME"${dir#\~}
+  dir="${dir#../${PWD##*/}}"
+  : ${dir:=.}
+  $(\cd "$dir" >/dev/null 2>&1) || return
+  [ "$depth" = 4 ] && printf "Searching directories..." >&2
+  _items="$(find -L "$dir" -xdev -mindepth 1 -maxdepth $depth '(' -name '.?*' -prune -o -name '__pycache__' -prune ')' -o -type d -print 2>/dev/null|\
+    sed -e s"#^$HOME/#\~/#"|sort)"
+  _items_ori="$_items"
+}
+
+# selector custom keys
+function _cd_keys
+{
+  typeset k="$1" dir="${_aitems[$_nsel]}"
+
+  case "$k" in
+    $'\t') # tab
+      selected="$dir"
+      return 1
+    ;;
+    '[C'|OC) # right
+      _last_nsel=$_nsel
+      _cdbrowse "$dir"
+      [ "$_items" ] || _items="${dir%/}/"
+      return 0
+    ;;
+    '[D'|OD) # left    
+      [[ "$dir" = \~* ]] && dir="$HOME"${dir#\~}
+      [[ "$dir" = */* ]] && dir="${dir%/*}" || dir="."
+      : ${dir:=/}
+      [ "$(\cd "$dir" >/dev/null;pwd)" = / ] && dir=/
+      case "$dir" in
+        .)   dir='..';;
+        *(../)..|..) dir="$dir/..";;
+        */*) dir="${dir%/*}";: ${dir:=/};;
+        *) dir='.';;
+      esac
+      _cdbrowse "$dir"
+      _force_nsel=$_last_nsel
+      unset _last_nsel
+      unset _last_filter
+      return 0
+    ;;
+    '[1;2C') # shift right
+      [[ "$dir" = \~* ]] && dir="$HOME"${dir#\~}
+      [[ "$dir" = */* ]] && dir="${dir%/*}" || dir="."
+      : ${dir:=/}
+      _cdbrowse "$dir" 4
+      return 0
+    ;;
+    '[1;2D') # shift right
+      [[ "$dir" = \~* ]] && dir="$HOME"${dir#\~}
+      [[ "$dir" = */* ]] && dir="${dir%/*}" || dir="."
+      : ${dir:=/}
+      _cdbrowse "$dir" 1
+      return 0
+    ;;
+    '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
+      cddelete "$dir"
+    ;;
+  esac
+  return 2
+}
+
+# cdhist    : Display CDNBDIRS history
+# cdhist -a : whole history
+# cdhist [-a] <pattern> [<pat>...]: display dirs matching pattern/cd to dir if unique found
+function cdhist {
+  typeset gr=. nb=${CDNBDIRS:-10} cdhf=${CDHISTFILE:-~/.cd_history} first='' awk=awk dir
+  [ ! -s "$cdhf" ] && printf "%s" "$CDINITDIRS" >$cdhf
+  [ "$_cdpr" = 1 ] && [ "$BASH" ] && tput el >&2
+  [ "$1" = -a ] && nb=-1 && shift
+  [ "$1" = - ] && first="exit" && shift
+  [ "$1" = -l ] && shift && { cdlocate "$@"; return; }
+  [ "$1" = + ] && shift && { cdsub 1 . "$@"; return; }
+  [ "$1" = ++ ] && shift && { cdsub 4 . "$@"; return; }
+  [ -x /bin/nawk ] && awk=nawk
+  [ "$1" ] && gr=$($awk 'BEGIN{OFS=".*";for(i=1;i<ARGC;i++) $i=ARGV[i];print}' "$@")
+  cdselect "$nb" "$($awk '$0 == pwd {next} $0 ~ gr {sub("^"hom"(/|$)","~/");print;'$first'}' gr="$gr" pwd="$PWD" hom=$HOME $cdhf)"
+}
+[ "$ZSH_VERSION" ] && {
+  function _zle_do {
+    zle -Rc
+    zle end-of-line
+    zle vi-insert
+    [ "$BUFFER" ] && zle accept-line
+  }
+
+  function _cdhistw {
+    BUFFER="$(_cdpr=1 cdhist $(eval printf '"%s "' "$BUFFER"))"
+    _zle_do
+  }
+
+  function _cddotw {
+    BUFFER="$(_cdpr=1 cdhist + $(eval printf '"%s "' "$BUFFER"))"
+    _zle_do
+  }
+
+  function _cdlw {
+    BUFFER="$(_cdpr=1 cdhist -l $(eval printf '"%s "' "$BUFFER"))"
+    _zle_do
+  }
+
+  function _cdlastw {
+    BUFFER="$(_cdpr=1 cdhist - $(eval printf '"%s "' "$BUFFER"))"
+    _zle_do
+  }
+
+  function _cdupw {
+    BUFFER="cd .."
+    _zle_do
+  }
+}
+[ "$BASH" ] && {
+  function _cdhistb {
+    READLINE_LINE="$(_cdpr=1 cdhist $(eval printf '"%s "' "${READLINE_LINE}"))"
+  }
+
+  function _cddotb {
+    READLINE_LINE="$(_cdpr=1 cdhist + $(eval printf '"%s "' "${READLINE_LINE}"))"
+  }
+
+  function _cdlb {
+    READLINE_LINE="$(_cdpr=1 cdhist -l $(eval printf '"%s "' "${READLINE_LINE}"))"
+  }
+
+  function _cdlastb {
+    READLINE_LINE="$(_cdpr=1 cdhist - $(eval printf '"%s "' "${READLINE_LINE}"))"
+  }
+
+  function _cdupb {
+    READLINE_LINE="cd .."
+  }
+
+}
+# cd autocompletion
+# expand arg without alias expansion
+_cdhist_cd() {
+  typeset row col var word="$2" dir=$(eval printf %s "$2") IFS=$' \t\n' ts='~/' hs="$HOME/" longword
+  # use bash_completion _cd or limited cdcomplete
+  dir="${dir/#$hs/$ts}"
+  COMP_WORDS=( cd "$dir" )
+  COMP_LINE=$(printf '%s ' "${COMP_WORDS[@]}")
+  COMP_LINE="${COMP_LINE% }"
+  COMP_POINT=${#COMP_LINE}
+  declare -F _cd >/dev/null && _cd "$@" || {
+    type compopt >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
+        compgen -f /non-existing-dir/ >/dev/null
+    dir="${dir/#$ts/$hs}"
+    COMP_WORDS=( cd "$dir" )
+    [ "$dir" = ".." ] && dir="../"
+    word="${dir##*/}"
+    [[ "$dir" = */* ]] && dir="${dir%/*}" || dir='.'
+    : ${dir:=/}
+    IFS=$'\n'
+    COMPREPLY=( $(\cd "$dir" >/dev/null 2>&1 && compgen -d -- "$word") ) 
+    IFS=$' \t\n'
+    [ ! "${COMPREPLY[0]}" ] && COMPREPLY=() && return
+    dir="${dir%/}/"
+    [ "$dir" = ./ ] && [[ ${COMP_WORDS[1]} != ./* ]] && dir=""
+    COMPREPLY=( "${COMPREPLY[@]/#/$dir}" )
+    # COMP_WORDS=( cd "$dir$word" )
+  }
+
+  [ ${#COMPREPLY[@]} = 1 ] && {
+    COMPREPLY[0]="${COMPREPLY[0]/#$ts/$hs}"
+    COMPREPLY[0]="${COMPREPLY[0]//\/\//\/}"
+    COMPREPLY[0]="${COMPREPLY[0]%/}/"
+    return 0
+  }
+  IFS='[;' read -rsd R -p $'\e[6n' _ row col
+  [ ${#COMPREPLY[@]} = 0 ] && {
+    printf '\nNot found !\r'
+    sleep 0.2
+    tput el
+    tput cuu1
+    tput cuf $((col-1)) >&2
+    return 1
+  }
+  COMPREPLY=( "${COMPREPLY[@]/#$hs/$ts}" )
+  # longest common prefix
+  longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
+  # [ ! "$COMP_TYPE" = 63 ]   && return #tab-tab but... tab: COMP_TYPE=9
+  printf "\r" >&2
+  IFS=$'\n'
+  COMPREPLY=( "$(_cdpr=2 cdselect $CDNBDIRS "$(printf "%s\n" "${COMPREPLY[@]}"|sort -u)" "$longword")" )
+  IFS=$' \t\n'
+  tput cuf $((col-1)) >&2
+  [ "${COMPREPLY[0]}" ] && {
+    COMPREPLY[0]="${COMPREPLY[0]/#$ts/$hs}"
+    COMPREPLY[0]="${COMPREPLY[0]//\/\//\/}"
+    COMPREPLY[0]="${COMPREPLY[0]%/}/"
+    return 0
+  }
+  longword="${longword/#$ts/$hs}"
+  compopt +o filenames -o nospace 2>/dev/null
+  [ "$2" != "$longword" ] && COMPREPLY=( "$longword" ) && return 0
+  # bash 5+ : COMPREPLY must be empty else next tab completion will be COMP_TYPE=63 and COMPREPLY will be ignored
+  COMPREPLY=()
+  [ "${BASH_VERSION%%.*}" -ge 5 ] && return 124
+  # bash <5 : COMPREPLY must change else next tab completion will be COMP_TYPE=63 and COMPREPLY will be ignored
+  [ "${BASH_VERSION%%.*}" = 4 ] && COMPREPLY=( " $2" ) || COMPREPLY=( "$2%" )
+  return 0
+
+}
+
+cdcomplete() {
+  [ "$BASH" ] && builtin complete -o nospace -F _cdhist_cd cd
+}
+
+# display/change to subdirs of cwd
+# cdsub <depth> [<pat> ...]
+function cdsub {
+  typeset depth="$1" orig="$2" gr=. awk=awk
+  shift 2
+  [ -x /bin/nawk ] && awk=nawk
+  [ "$1" ] && gr=$($awk 'BEGIN{OFS=".*";for(i=1;i<ARGC;i++) $i=ARGV[i];print}' "$@")
+  gr="${gr%/}"
+  printf "%s" " Searching directories..." >&2
+  cdselect "$CDNBDIRS" "$(find -L "$orig" -xdev -mindepth 1 -maxdepth $depth '(' -name '.?*' -prune -o -name '__pycache__' -prune ')' -o -type d -print |\
+    sort -u |grep -- "$gr" 2>/dev/null;tput cub 25 >&2;tput el >&2)"
+}
+
+# use locate to get directories
+function locatedir {
+  typeset file gr awk=awk
+  type locate >/dev/null 2>/dev/null || { printf "no locate command found" >&2;sleep 0.7;return; }
+  [ ! "$1" ] && printf "need to give pattern" >&2 && sleep 0.7 && return
+  [ -x /bin/nawk ] && awk=nawk
+  gr=$($awk 'BEGIN{OFS=".*";for(i=1;i<ARGC;i++) $i=ARGV[i];print}' "$@")
+  shift $(($# - 1))
+  (locate -r "$gr" 2>/dev/null|| locate "$gr") |awk -F'/' '/\/\.|^\/snap/{next}$NF ~ gr' gr=${1##*/} |while read file
+  do
+    [ -d "$file" ] && printf "%s\n" "$file"
+  done
+}
+
+function cdlocate {
+  [ "$_cdpr" = 1 ] && tput el >&2
+  cdselect -1 "$(locatedir "$@")"
+}
+
+
+# Esc-! shortcut to get cdhist
+function _cdbind {
+  typeset k
+  [ -t 1 ] || return
+  [[ ! -o emacs ]] && [[ ! -o vi ]] && set -o emacs
+  [ "${BASH_VERSION%%.*}" = 3 ] && {
+    bind -m vi-insert '"\C-xr": redraw-current-line'
+    bind -m vi-insert '"\C-xx": shell-expand-line'
+    bind -m vi-insert '"\C-xk": backward-kill-line'
+    bind -m vi-insert '"\C-xs": character-search'
+    bind -m vi-insert '"\C-xb": character-search-backward'
+    bind -m vi-insert '"\C-xe": kill-line'
+    bind -m vi-insert '"\C-xm": set-mark'
+    bind -m vi-insert '"\C-xc": exchange-point-and-mark'
+    bind -m emacs-standard '"\C-xr": redraw-current-line'
+    bind -m emacs-standard '"\C-xx": shell-expand-line'
+    bind -m emacs-standard '"\C-xk": backward-kill-line'
+    bind -m emacs-standard '"\C-xs": character-search'
+    #bind -m emacs-standard '"\C-xb": character-search-backward'
+    bind -m emacs-standard '"\C-xd": delete-char'
+    bind -m emacs-standard '"\C-xm": set-mark'
+    bind -m emacs-standard '"\C-xc": exchange-point-and-mark'
+
+    # \C-a beginning-of-line
+    # \C-e end-of-line
+    # \C-k kill-line
+
+    # safe param quoting (but take only current line until first simple quote)
+    # prevent expansion in filter / bell ring
+    # - append simple quote to line
+    # - add "." begin of line return begin of line
+    # - search simple quote
+    # - mark position
+    # - delete first character "." added
+    # - exchange mark
+    # - add character "." before simple quote (for kill ring if empty)
+    # - cut before simple quote
+    # - paste in param, remove last character added
+    # - cut end of line
+    # - expand line
+
+    for k in $CDHISTBIND ;do
+      bind -m vi-insert '"'"$k"'": "\eA'"'"'\eI.\eI\C-xs'"'"'\C-xm\e0xi\C-xc\ei.\C-xk$(_cdpr=1 cdhist '"'"'\C-y\C-h'"'"')\C-xe\eI\C-xx\eA\C-xr\015"'
+      bind -m vi-command '"'"$k"'": "A'"'"'\eI.\eI\C-xs'"'"'\C-xm\e0xi\C-xc\ei.\C-xk$(_cdpr=1 cdhist '"'"'\C-y\C-h'"'"')\C-xe\eI\C-xx\eA\C-xr\015"'
+      bind -m emacs-standard '"'"$k"'": "\C-e'"'"'\C-a.\C-a\C-xs'"'"'\C-xm\C-a\C-xd\C-xc\C-b.\C-xk$(_cdpr=1 cdhist '"'"'\C-y\C-h'"'"')\C-k\C-a\C-xx\C-e\C-xr\015"'
+    done
+    for k in $CDLASTBIND ;do
+      bind -m vi-insert '"'"$k"'": "\eA'"'"'\eI.\eI\C-xs'"'"'\C-xm\e0xi\C-xc\ei.\C-xk$(_cdpr=1 cdhist - '"'"'\C-y\C-h'"'"')\C-xe\eI\C-xx\eA\C-xr\015"'
+      bind -m vi-command '"'"$k"'"": "A'"'"'\eI.\eI\C-xs'"'"'\C-xm\e0xi\C-xc\ei.\C-xk$(_cdpr=1 cdhist - '"'"'\C-y\C-h'"'"')\C-xe\eI\C-xx\eA\C-xr\015"'
+      bind -m emacs-standard '"'"$k"'": "\C-e'"'"'\C-a.\C-a\C-xs'"'"'\C-xm\C-a\C-xd\C-xc\C-b.\C-xk$(_cdpr=1 cdhist - '"'"'\C-y\C-h'"'"')\C-k\C-a\C-xx\C-e\C-xr\015"'
+    done
+    for k in $CDDOTBIND ;do
+      bind -m vi-insert '"'"$k"'": "\eA'"'"'\eI.\eI\C-xs'"'"'\C-xm\e0xi\C-xc\ei.\C-xk$(_cdpr=1 cdhist + '"'"'\C-y\C-h'"'"')\C-xe\eI\C-xx\eA\C-xr\015"'
+      bind -m vi-command '"'"$k"'": "A'"'"'\eI.\eI\C-xs'"'"'\C-xm\e0xi\C-xc\ei.\C-xk$(_cdpr=1 cdhist + '"'"'\C-y\C-h'"'"')\C-xe\eI\C-xx\eA\C-xr\015"'
+      bind -m emacs-standard '"'"$k"'": "\C-e'"'"'\C-a.\C-a\C-xs'"'"'\C-xm\C-a\C-xd\C-xc\C-b.\C-xk$(_cdpr=1 cdhist + '"'"'\C-y\C-h'"'"')\C-k\C-a\C-xx\C-e\C-xr\015"'
+    done
+    for k in $CDUPBIND ;do
+      bind -m vi-insert '"'"$k"'": "\eddicd ..\015"'
+      bind -m vi-command '"'"$k"'": "ddicd ..\015"'
+      bind -m emacs-standard '"'"$k"'": "cd ..\015"'
+    done
+    for k in $CDLBIND ;do
+      bind -m vi-insert '"'"$k"'": "\eA'"'"'\eI.\eI\C-xs'"'"'\C-xm\e0xi\C-xc\ei.\C-xk$(_cdpr=1 cdlocate '"'"'\C-y\C-h'"'"')\C-xe\eI\C-xx\eA\C-xr\015"'
+      bind -m vi-command '"'"$k"'": "A'"'"'\eI.\eI\C-xs'"'"'\C-xm\e0xi\C-xc\ei.\C-xk$(_cdpr=1 cdlocate '"'"'\C-y\C-h'"'"')\C-xe\eI\C-xx\eA\C-xr\015"'
+      bind -m emacs-standard '"'"$k"'": "\C-e'"'"'\C-a.\C-a\C-xs'"'"'\C-xm\C-a\C-xd\C-xc\C-b.\C-xk$(_cdpr=1 cdlocate '"'"'\C-y\C-h'"'"')\C-k\C-a\C-xx\C-e\C-xr\015"'
+    done
+    return
+  }
+  [ "$BASH" ] && {
+
+    bind -m vi-insert -x '"\C-xa": _cdhistb'
+    bind -m vi-command -x '"\C-xa": _cdhistb'
+    bind -m emacs-standard -x '"\C-xa": _cdhistb'
+    for k in $CDHISTBIND ;do
+      bind -m vi-insert '"'"$k"'": "\C-xa\015"'
+      bind -m vi-command '"'"$k"'": "\C-xa\015"'
+      bind -m emacs-standard '"'"$k"'": "\C-xa\015"'
+    done
+
+    bind -m vi-insert -x '"\C-xb": _cdlastb'
+    bind -m vi-command -x '"\C-xb": _cdlastb'
+    bind -m emacs-standard -x '"\C-xb": _cdlastb'
+    for k in $CDLASTBIND ;do
+      bind -m vi-insert '"'"$k"'": "\C-xb\015"'
+      bind -m vi-command '"'"$k"'": "\C-xb\015"'
+      bind -m emacs-standard '"'"$k"'": "\C-xb\015"'
+    done
+
+    bind -m vi-insert -x '"\C-xc": _cddotb'
+    bind -m vi-command -x '"\C-xc": _cddotb'
+    bind -m emacs-standard -x '"\C-xc": _cddotb'
+    for k in $CDDOTBIND ;do
+      bind -m vi-insert '"'"$k"'": "\C-xc\015"'
+      bind -m vi-command '"'"$k"'": "\C-xc\015"'
+      bind -m emacs-standard '"'"$k"'": "\C-xc\015"'
+    done
+
+    for k in $CDUPBIND ;do
+      bind -m vi-insert '"'"$k"'": "\eddicd ..\015"'
+      bind -m vi-command '"'"$k"'": "ddicd ..\015"'
+      bind -m emacs-standard '"'"$k"'": "cd ..\015"'
+    done
+
+    bind -m vi-insert -x '"\C-xd": _cdlb'
+    bind -m vi-command -x '"\C-xd": _cddlb'
+    bind -m emacs-standard -x '"\C-xd": _cdlb'
+    for k in $CDLBIND ;do
+      bind -m vi-insert '"'"$k"'": "\C-xd\015"'
+      bind -m vi-command '"'"$k"'": "\C-xd\015"'
+      bind -m emacs-standard '"'"$k"'": "\C-xd\015"'
+    done
+    return
+  }
+  [ "$ZSH_VERSION" ] && {
+    zle -N _cdhistw
+    zle -N _cddotw
+    zle -N _cdlw
+    zle -N _cdlastw
+    zle -N _cdupw
+    for k in $(printf '%s' $CDHISTBIND);do
+      bindkey -M vicmd "$k" _cdhistw
+      bindkey -M viins "$k" _cdhistw
+      bindkey -M emacs "$k" _cdhistw
+    done
+    for k in $(printf '%s' $CDLASTBIND);do
+      bindkey -M vicmd "$k" _cdlastw
+      bindkey -M viins "$k" _cdlastw
+      bindkey -M emacs "$k" _cdlastw
+    done
+    for k in $(printf '%s' $CDDOTBIND);do
+      bindkey -M vicmd "$k" _cddotw
+      bindkey -M viins "$k" _cddotw
+      bindkey -M emacs "$k" _cddotw
+    done
+    for k in $(printf '%s' $CDUPBIND);do
+      bindkey -M vicmd "$k" _cdupw
+      bindkey -M viins "$k" _cdupw
+      bindkey -M emacs "$k" _cdupw
+    done
+    for k in $(printf '%s' $CDLBIND);do
+      bindkey -M vicmd "$k" _cdlw
+      bindkey -M viins "$k" _cdlw
+      bindkey -M emacs "$k" _cdlw
+    done
+  }
+}
+alias cd=cdpush
+alias cd-='cd -'
+alias cd--=cdhist
+alias cd+='cdsub 1 .'
+alias cd++='cdsub 4 .'
+alias cdl=cdlocate
+_cdbind
+[ "$CDCOMPLETE" = y ] && cdcomplete
+:
