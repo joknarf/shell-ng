@@ -1,12 +1,12 @@
 # set ft=zsh
 [ "${ZSH_VERSION%%.*}" -lt 5 ] && return
-#type selector >/dev/null 2>&1 || . "$(cd "${0%/*}";pwd)/lib/selector"
+type selector >/dev/null 2>&1 || . "$(cd "${0%/*}";pwd)/lib/selector"
+# Based on https://github.com/lincheney/fzf-tab-completion
 # use a whitespace char or anchors don't work
 _COMPLETE_NG_SEP=$'\u00a0'
 _COMPLETE_NG_SPACE_SEP=$'\v'
 _COMPLETE_NG_NONSPACE=$'\u00ad'
 _COMPLETE_NG_FLAGS=( a k f q Q e n U l 1 2 C )
-_COMPLETE_NG_KEYBINDINGS=50
 _comps[cdpush]=_cd
 
 zmodload zsh/zselect
@@ -100,18 +100,6 @@ _complete_ng() {
         fi
         _COMPLETE_NG_CONTEXT=":completion:${curcontext}:complete:$_COMPLETE_NG_CONTEXT"
 
-        local _COMPLETE_NG_SEARCH_DISPLAY=0
-        if builtin zstyle -t "$_COMPLETE_NG_CONTEXT" fzf-search-display; then
-            _COMPLETE_NG_SEARCH_DISPLAY=1
-        fi
-        local _COMPLETE_NG_SECONDARY_COLOR=
-        if ! builtin zstyle -s "$_COMPLETE_NG_CONTEXT" complete-ng-secondary-color _COMPLETE_NG_SECONDARY_COLOR; then
-            _COMPLETE_NG_SECONDARY_COLOR=white
-        fi
-        if [[ -n "$_COMPLETE_NG_SECONDARY_COLOR" ]]; then
-            print -v _COMPLETE_NG_SECONDARY_COLOR -P "%F{$_COMPLETE_NG_SECONDARY_COLOR}"
-        fi
-
         set -o monitor +o notify
         exec {__evaled}>&1
         trap '' INT
@@ -160,16 +148,7 @@ _complete_ng() {
 
     compstate[insert]=unambiguous
     case "$__code" in
-        $_COMPLETE_NG_KEYBINDINGS)
-            if (( __code == _COMPLETE_NG_KEYBINDINGS )); then
-                __action="$(head -n1 <<<"$__value")"
-                if [[ "$__action" == accept:* ]]; then
-                    __action="${__action#accept:}"
-                    __code=0
-                fi
-            fi
-            ;|
-        0|$_COMPLETE_NG_KEYBINDINGS)
+        0)
             local opts= index= value
             while IFS="$_COMPLETE_NG_SEP" read -r -A value; do
                 if (( !__code && ${#value[@]} >= 3 )); then
@@ -238,7 +217,7 @@ _complete_ng_selector() {
     local all_lines items
     all_lines=$( (( ${#lines[@]} )) && printf %s\\n "${lines[@]}"; cat)
     items="$(printf %s "$all_lines"|sed -e "s/$_COMPLETE_NG_SEP.*//" -e "s/[\\']//g")"
-    selected="$(selector -m 10 -k _complete-ng_key -i "$items" -F "$PREFIX")"
+    selected="$(selector -m 10 -k _complete-ng_key -i "$items" -F "$PREFIX" -o filenames)"
     code="$?"
     s="${selected#${PREFIX%/*}/}"
     s="${s%/}"
@@ -330,7 +309,6 @@ _complete_ng_compadd() {
     else
         __disp=( "${(@P)__disp[2]}" )
     fi
-
     builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -- "$@"
     # have to run it for real as some completion functions check compstate[nmatches]
     builtin compadd $__no_matching -a __hits
@@ -338,8 +316,9 @@ _complete_ng_compadd() {
     __flags="${(j..)__flags//[ak-]}"
     if [ -z "${__optskv[(i)-U]}" ]; then
         # -U ignores $IPREFIX so add it to -i
-        __ipre[2]="${IPREFIX}${__ipre[2]}"
-        __ipre=( -i "${__ipre[2]}" )
+        # FJO no -i as giving it in value
+        #__ipre[2]="${IPREFIX}${__ipre[2]}"
+        #__ipre=( -i "${__ipre[2]}" )
         IPREFIX=
     fi
     local compadd_args="$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -U)"
@@ -350,10 +329,12 @@ _complete_ng_compadd() {
     local __disp_str __hit_str __show_str __real_str __suffix
 
     local prefix="${IPREFIX}${__ipre[2]}${__apre[2]}${__hpre[2]}"
-    local suffix="${__hsuf[2]}${__asuf[2]}${__isuf[2]}"
-    if [ -n "$__is_param" -a "$prefix" = '${' -a -z "$suffix" ]; then
-        suffix+=}
-    fi
+    # FJO no suffix 
+    # local suffix="${__hsuf[2]}${__asuf[2]}${__isuf[2]}"
+    # if [ -n "$__is_param" -a "$prefix" = '${' -a -z "$suffix" ]; then
+    #     suffix+=}
+    # fi
+    suffix=""
 
     local i
     for ((i = 1; i <= $#__hits; i++)); do
@@ -395,11 +376,11 @@ _complete_ng_compadd() {
             __show_str="$__disp_str"
             __disp_str=
         elif (( ! _COMPLETE_NG_SEARCH_DISPLAY )); then
-            __disp_str="$_COMPLETE_NG_SECONDARY_COLOR$__disp_str"$'\x1b[0m'
+            __disp_str="$__disp_str"$'\x1b[0m'
         fi
 
         if [[ "$__show_str" == "$PREFIX"* ]]; then
-            __show_str="${__show_str:${#PREFIX}}${_COMPLETE_NG_SPACE_SEP}${_COMPLETE_NG_SECONDARY_COLOR}${PREFIX}"$'\x1b[0m'
+            __show_str="${__show_str:${#PREFIX}}${_COMPLETE_NG_SPACE_SEP}${PREFIX}"$'\x1b[0m'
         else
             __show_str+="${_COMPLETE_NG_SEP}"
         fi
