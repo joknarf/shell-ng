@@ -1,6 +1,8 @@
 # complete-ng : bash completion nextgen
 # Author : Franck Jouvanceau
 
+declare -F selector >/dev/null 2>&1 || . "$(cd "${BASH_SOURCE%/*}";pwd)/lib/selector"
+
 #unalias complete 2>/dev/null
 #alias complete=complete-ng
 
@@ -62,7 +64,7 @@ _complete-ng_key() {
 
 _complete-ng() {
   local cmd="${COMP_WORDS[O]}" fn IFS="$IFS" opt="-f" word="" selopt='-o filenames' longword
-  [ "$COMP_CWORD" -ge 0 ] && word="${COMP_WORDS[$COMP_CWORD]}"
+  [ ${#COMP_WORDS[@]} -gt 0 ] && word="${COMP_WORDS[$COMP_CWORD]}"
   fn=$(eval printf %s '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
   [ "$fn" ] || { cmd="${cmd##*/}"; fn=$(eval printf %s '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}"); }
   [ "$fn" ] || {

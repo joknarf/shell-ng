@@ -289,7 +289,7 @@ _complete-ng_key() {
     'OR') # F3
       _force_nsel=$_nsel
       [ -r "$item" ] && [ -f "$item" ] || return 0
-      ${PAGER:-less -+EX} "$item"
+      less -+EX "$item"
       tput civis
       return 0
     ;;
