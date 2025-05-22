@@ -13,6 +13,9 @@ shell-ng is using Nerd Font glyphs, you should install Nerd font on your favorit
 
 # Usage
 Use a plugin manager or manually source the plugin for your shell.
+```
+# source shell-ng.plugin.${SHELL##*/}
+```
 
 Can be easily used with [thefly](https://github.com/joknarf/thefly) plugin manager/teleporter:
 ```
