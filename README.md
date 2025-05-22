@@ -8,7 +8,14 @@ All-in-one plugin optimized with joknarf shell command line customizations, incl
 * [seedee](https://github.com/joknarf/seedee): Directory history interactive menu (bash/zsh/ksh)
 * [complete-ng](https://github.com/joknarf/complete-ng): Auto-completion interactive menu (bash/zsh)
 
+# Pre-requisites
+shell-ng is using Nerd Font glyphs, you should install Nerd font on your favorite terminal manager, or it should manage Nerd glyphs
+
+# Usage
+Use a plugin manager or manually source the plugin for your shell.
+
 Can be easily used with [thefly](https://github.com/joknarf/thefly) plugin manager/teleporter:
 ```
 # fly add joknarf/shell-ng
 ```
+thefly will allow to keep all your plugins avaiable when connecting to remote servers through ssh, and even changing shell and user with sudo.
