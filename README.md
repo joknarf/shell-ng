@@ -25,3 +25,7 @@ Can be easily used with [thefly](https://github.com/joknarf/thefly) plugin manag
 # fly add joknarf/shell-ng
 ```
 thefly will allow to keep all your plugins available when connecting to remote servers through ssh, and even changing shell and user with sudo.
+
+# Demo
+
+![shell-ng3](https://github.com/user-attachments/assets/431d6d71-0d0a-4fbc-bcb8-738cb1832880)
