@@ -58,7 +58,7 @@ function cdpush {
   [ "$_cdpr" ] && {
     [ "$_cdpr" = 1 ] && printf "cd %q" "$dir"
     [ "$_cdpr" = 2 ] && printf "$dir"
-    return 0
+    [ "$_cdpr" != 3 ] && return 0
   }
   \cd "$@" || return $?
   printf "%s\n" "$PWD" >"$cdhf.tmp"
@@ -481,6 +481,14 @@ function _cdbind {
       bindkey -M emacs "$k" _cdlw
     done
   }
+}
+[ "$KSH_VERSION" ] && {
+    CDHISTBIND=$'\e[Z' #Shit Tab
+    trap '
+      if [[ ${.sh.edchar} == "$CDHISTBIND" ]]; then
+        _cdpr=3 cdhist "${.sh.edtext}"
+      fi
+    ' KEYBD
 }
 alias cd=cdpush
 alias cd-='cd -'
