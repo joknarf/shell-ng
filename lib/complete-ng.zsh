@@ -201,7 +201,7 @@ _complete_ng_post() {
 
 _complete_ng_selector() {
     local lines=() reply REPLY
-    exec {tty}<&1 #/dev/tty
+    exec {tty}</dev/tty
 
     while (( ${#lines[@]} < 2 )); do
         zselect -r 0 "$tty"
@@ -229,11 +229,11 @@ _complete_ng_selector() {
     nbitems="${#items[@]}"
     items="${(F)items[@]}" # separated by newlines
     if (( nbitems > 1 )); then
-        tput cud1 #>/dev/tty
+        tput cud1 >/dev/tty
         longword="$(printf "%s\n" "${items}"|sed -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
         selected="$(selector -m 10 -k _complete-ng_key -i "$items" -o filenames -F "$longword")"
         code="$?"
-        tput cuu1 #>/dev/tty
+        tput cuu1 >/dev/tty
     else
        selected="$items"
        code="0"
