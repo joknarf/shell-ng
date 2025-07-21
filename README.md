@@ -2,6 +2,7 @@
 Shell next-gen plugin, the new shell experience (for bash/zsh/ksh) in native shell.
 
 All-in-one plugin optimized with joknarf shell command line customizations, includes:
+
 | Plugin                                                | Short description                                       | Basic key binding                     |
 |-------------------------------------------------------|---------------------------------------------------------|---------------------------------------|
 | [selector](https://github.com/joknarf/selector)       | Interactive menu used in joknarf plugins (bash/zsh/ksh) |                                       |
