@@ -1,4 +1,4 @@
-[![bash](https://img.shields.io/badge/shell-bash%20|%20zsh%20|%20(ksh)%20-blue.svg)]()
+[![bash](https://img.shields.io/badge/shell-bash%20|%20zsh%20|%20(ksh)%20-blue.svg?logo=shell)]()
 
 # shell-ng
 Shell next-gen plugin, the new shell experience (for bash/zsh/ksh) in native shell.
