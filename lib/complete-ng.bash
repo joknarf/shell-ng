@@ -64,42 +64,46 @@ _complete-ng_key() {
 
 _complete-ng() {
   local cmd="${COMP_WORDS[O]}" fn IFS="$IFS" opt="-f" word="" selopt='-o filenames' longword
-  [ ${#COMP_WORDS[@]} -gt 0 ] && word="${COMP_WORDS[$COMP_CWORD]}"
-  fn=$(eval printf %s '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
-  [ "$fn" ] || { cmd="${cmd##*/}"; fn=$(eval printf %s '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}"); }
+  [ "${#COMP_WORDS[@]}" -gt 0 ] && word="${COMP_WORDS[$COMP_CWORD]}"
+  fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
+  [ "$fn" ] || { cmd="${cmd##*/}"; fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}"); }
   [ "$fn" ] || {
     [ "$_compfunc__D" ] && {
         $_compfunc__D "$@" # _completion_loader
-        fn=$(eval printf %s '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
+        fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
     }
   }
   [ "$fn" ] && { $fn "$@"; } || {
-    type compopt >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
+    type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
         compgen -f /non-existing-dir/ >/dev/null
     [ "$COMP_CWORD" -le 0 ] && [ "$word" ] && opt="-c"
+    set -f
     : ${word:=./}
-    IFS=$'\n' COMPREPLY=( $(compgen $opt -- "$word") ) IFS=$' \t\n'; 
+    IFS=$'\n' COMPREPLY=( $(compgen $opt -- "$word") ) IFS=$' \t\n'
+    set +f
   }
-  [ ${#COMPREPLY[@]} = 1 ] && return
+  [ "${#COMPREPLY[@]}" = 1 ] && return
   IFS='[;' read -rsd R -p $'\e[6n' _ row col
   printf "\n" >&2
-  [ ${#COMPREPLY[@]} = 0 ] && {
+  [ "${#COMPREPLY[@]}" = 0 ] && {
     printf 'Not found !\r'
-    sleep 0.2
-    tput el
-    tput cuu1
-    tput cuf $((col-1)) >&2
+    sleep "0.2"
+    tput "el"
+    tput "cuu1"
+    tput "cuf" "$((col-1))" >&2
     return 1
   }
-  type compopt &>/dev/null && { [[ $(compopt) = *-o\ filename* ]] || selopt=''; }
+  type "compopt" &>/dev/null && { [[ $(compopt) = *-o\ filename* ]] || selopt=''; }
   # longest common prefix
   longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
+  set -f
   COMPREPLY=( "$(selector -m 10 -k _complete-ng_key $selopt -i "$(printf "%s\n" "${COMPREPLY[@]}"|sort -u)" -F "$longword")" )
+  set +f
   #kill -WINCH $$ # force redraw prompt
-  tput cuu1
-  tput cuf $((col-1)) >&2
+  tput "cuu1"
+  tput "cuf" "$((col-1))" >&2
   [ ! "${COMPREPLY[0]}" ] && {
-    compopt +o filenames -o nospace 2>/dev/null
+    compopt +o "filenames" -o "nospace" 2>/dev/null
     [ "$word" != "$longword" ] && COMPREPLY=( "$longword" ) && return 0
     # bash 5+ : COMPREPLY must be empty else next tab completion will be COMP_TYPE=63 and COMPREPLY will be ignored
     COMPREPLY=()

@@ -225,7 +225,9 @@ _complete_ng_selector() {
     local all_lines items longword selected s nbitems
     all_lines=$( (( ${#lines[@]} )) && printf %s\\n "${lines[@]}"; cat)
     items="$(printf %s "$all_lines"|sed -e "s/$_COMPLETE_NG_SEP.*//")" # -e "s/[\\']//g")"
+    set -f
     eval "items=( $items )"
+    set +f
     nbitems="${#items[@]}"
     items="${(F)items[@]}" # separated by newlines
     if (( nbitems > 1 )); then
