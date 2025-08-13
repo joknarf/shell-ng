@@ -15,7 +15,7 @@ All-in-one plugin optimized with joknarf shell command line customizations, incl
 
 ## Pre-requisites
 * shell-ng is using Nerd Font glyphs, you should install Nerd font on your favorite terminal manager, or it should manage Nerd glyphs
-* Basic standard gnu utilities (sed/awk/grep)
+* Basic standard gnu utilities (sed/awk/grep/tar/gzip)
 
 ## Usage
 Use a plugin manager or manually source the plugin for your shell.
