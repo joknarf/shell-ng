@@ -20,12 +20,12 @@ All-in-one plugin optimized with joknarf shell command line customizations, incl
 ## Usage
 Use a plugin manager or manually source the plugin for your shell.
 ```
-## source shell-ng.plugin.${SHELL##*/}
+# source shell-ng.plugin.${SHELL#*/}
 ```
 
 Can be easily used with [thefly](https://github.com/joknarf/thefly) plugin manager/teleporter:
 ```
-## fly add joknarf/shell-ng
+# fly add joknarf/shell-ng
 ```
 thefly will allow to keep all your plugins available when connecting to remote servers through ssh, and even changing shell and user with sudo.
 
