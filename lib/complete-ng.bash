@@ -86,18 +86,26 @@ _complete-ng() {
   IFS='[;' read -rsd R -p $'\e[6n' _ row col
   printf "\n" >&2
   [ "${#COMPREPLY[@]}" = 0 ] && {
-    printf 'Not found !\r'
-    sleep "0.2"
-    tput "el"
-    tput "cuu1"
-    tput "cuf" "$((col-1))" >&2
-    return 1
+    [ "$fn" ] && {
+      set -f
+      IFS=$'\n' COMPREPLY=( $(compgen -f -- "$word") ) IFS=$' \t\n'
+      set +f
+    }
+    [ "${#COMPREPLY[@]}" = 0 ] && {
+      printf 'Not found !\r'
+      sleep "0.2"
+      tput "el"
+      tput "cuu1"
+      tput "cuf" "$((col-1))" >&2
+      return 1
+    }
   }
   type "compopt" &>/dev/null && { [[ $(compopt) = *-o\ filename* ]] || selopt=''; }
   # longest common prefix
   longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
+  [ "$longword" ] || longword="$word"
   set -f
-  COMPREPLY=( "$(selector -m 10 -k _complete-ng_key $selopt -i "$(printf "%s\n" "${COMPREPLY[@]}"|sort -u)" -F "$longword")" )
+  COMPREPLY=( "$(SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key $selopt -i "$(printf "%s\n" "${COMPREPLY[@]}"|sort -u)" -F "$longword")" )
   set +f
   #kill -WINCH $$ # force redraw prompt
   tput "cuu1"
@@ -141,6 +149,7 @@ complete() {
 }
 
 _complete-ng_init() {
+  bind -v |grep -q 'completion-ignore-case on' && COMPLETE_NG_CASEI=true || COMPLETE_NG_CASEI=false
   if cat <(printf %s) 2>/dev/null && [ "${BASH_VERSION%%.*}" -ge 4 ];then
     source <(builtin complete |sed -n -e '/-F _complete-ng /d' -e '/-F/p')
   else # process substitution not working (ish/bash 3.2)

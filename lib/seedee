@@ -248,7 +248,9 @@ _cdhist_cd() {
     [[ "$dir" = */* ]] && dir="${dir%/*}" || dir='.'
     : ${dir:=/}
     IFS=$'\n'
+    set -f
     COMPREPLY=( $(\cd "$dir" >/dev/null 2>&1 && compgen -d -- "$word") ) 
+    set +f
     IFS=$' \t\n'
     [ ! "${COMPREPLY[0]}" ] && COMPREPLY=() && return
     dir="${dir%/}/"
