@@ -87,6 +87,7 @@ _complete-ng() {
   printf "\n" >&2
   [ "${#COMPREPLY[@]}" = 0 ] && {
     [ "$fn" ] && {
+      type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \                                                                                         compgen -f /non-existing-dir/ >/dev/null
       set -f
       IFS=$'\n' COMPREPLY=( $(compgen -f -- "$word") ) IFS=$' \t\n'
       set +f
