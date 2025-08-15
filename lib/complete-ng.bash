@@ -1,7 +1,7 @@
 # complete-ng : bash completion nextgen
 # Author : Franck Jouvanceau
 
-declare -F selector >/dev/null 2>&1 || . "$(cd "${BASH_SOURCE%/*}";pwd)/lib/selector"
+declare -F selector >/dev/null 2>&1 || . "$(\cd "${BASH_SOURCE%/*}";pwd)/lib/selector"
 
 #unalias complete 2>/dev/null
 #alias complete=complete-ng

@@ -1,6 +1,6 @@
 # set ft=zsh
 [ "${ZSH_VERSION%%.*}" -lt 5 ] && return
-type selector >/dev/null 2>&1 || . "$(cd "${0%/*}";pwd)/lib/selector"
+type selector >/dev/null 2>&1 || . "$(\cd "${0%/*}";pwd)/lib/selector"
 # Based on https://github.com/lincheney/fzf-tab-completion
 # use a whitespace char or anchors don't work
 _COMPLETE_NG_SEP=$'\u00a0'
