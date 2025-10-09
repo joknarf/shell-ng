@@ -43,6 +43,9 @@ touch ${CDHISTFILE:=~/.cd_history}
 : ${CDUPBIND:='\e[1;2D \e[1;5D'}
 : ${CDLASTBIND:='\e[1;2A \e[1;5A'}
 
+# Enable "application cursor keys" mode (like tmux)
+printf '\e[?1h'
+
 [ "$BASH" ] && shopt -s extglob progcomp
 
 # change directory and updpate CDHISTFILE
