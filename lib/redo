@@ -82,10 +82,13 @@ _redow() {
 }
 
 # Define a function to replace the current word
+# trap SIGINT to prevent readline leaving in incorrect state
 _redob() {
+    trap '' INT
     local line="$READLINE_LINE"
     READLINE_LINE=$(_redo_selector "$line")
     READLINE_POINT=${#READLINE_LINE}
+    trap - INT
 }
 
 _redo_binds()
