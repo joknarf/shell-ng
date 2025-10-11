@@ -301,6 +301,7 @@ function selector
   stty $_stty_ori 2>/dev/null
   unset _items _maxlines _autofilter _keufunc _sel_option
   [ ! "$_sel_abort" ] && [ "$selected" ] && printf "%s" "$selected" && return 0
+  unset _sel_abort
   return 1
 }
 
