@@ -1,8 +1,11 @@
 # set ft=zsh
 [ "${ZSH_VERSION%%.*}" -lt 5 ] && return
+[[ $ZSH_VERSION = 5.0* ]] && return
 type selector >/dev/null 2>&1 || . "$(\cd "${0%/*}";pwd)/lib/selector"
+[[ $LANG = *UTF-8 ]] || export LC_ALL=en_US.UTF-8
 # Based on https://github.com/lincheney/fzf-tab-completion
 # use a whitespace char or anchors don't work
+
 _COMPLETE_NG_SEP=$'\u00a0'
 _COMPLETE_NG_SPACE_SEP=$'\v'
 _COMPLETE_NG_NONSPACE=$'\u00ad'
