@@ -248,10 +248,10 @@ _complete_ng_selector() {
     #[[ "$PREFIX" != ..* ]] && s="${selected#${PREFIX%/*}/}"
     # s="${s%/}"
     #s="$(printf '%q' "$(printf '%q' "$s")")"
-    s="$(printf '%q' "$s")"
+    s="$(printf '%q' "${(Q)s}")"
     # s="${s/#\\\\~\//~/}"
     s="${s/#\\~\//~/}"	
-    selected="$(printf '%q' "$selected")"
+    selected="$(printf '%q' "${(Q)selected}")"
     [ "$selected" ] && printf '%s\n' "$selected$_COMPLETE_NG_SEP$s${_COMPLETE_NG_SEP}1$_COMPLETE_NG_SEP$selected$_COMPLETE_NG_SPACE_SEP"
     return "$code"
 }
