@@ -83,6 +83,9 @@ _redow() {
 
 # Define a function to replace the current word
 _redob() {
+    typeset _ps1
+    [ "$UID" = 0 ] && _ps1='#' || _ps1='$'
+    printf "%s " "$_ps1" >&2
     READLINE_LINE=$(_redo_selector "$READLINE_LINE")
     READLINE_POINT=${#READLINE_LINE}
 }
