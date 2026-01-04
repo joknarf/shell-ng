@@ -183,7 +183,8 @@ function cdhist {
     zle -Rc
     zle end-of-line
     zle vi-insert
-    [ "$BUFFER" ] && zle accept-line
+    [ "$BUFFER" ] || return 0
+    zle accept-line
   }
 
   function _cdhistw {
