@@ -84,10 +84,7 @@ function cdselect
 {
   typeset dir nb="$1" filter="$3" t l nl='$\n'
   [ "$_cdpr" ] && {
-    [ "$_cdpr" = 1 ] && [ "$BASH" ] && {
-      [[ "$BASH_VERSION" = 4.[3-9].* ]] && tput cuu1 >&2 # 4.2+
-      tput el >&2
-    }
+    [ "$_cdpr" = 1 ] && [ "$BASH" ] && tput el >&2
     printf "\n" >&2
   }
   dir="$(selector -P "$CDPOWERLINE" -m "$nb" -p cd -k _cd_keys -F "$filter" -i "$2")"
