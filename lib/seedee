@@ -84,9 +84,9 @@ function cdselect
 {
   typeset dir nb="$1" filter="$3" t l nl='$\n'
   [ "$_cdpr" ] && {
-    [ "$_cdpr" = 1 ] && {
+    [ "$_cdpr" = 1 ] && [ "$BASH" ] && {
       [[ "$BASH_VERSION" = 4.[3-9].* ]] && tput cuu1 >&2 # 4.2+
-      [ "$BASH" ] && [ "$_cdpr" = 1 ] && tput el >&2
+      tput el >&2
     }
     printf "\n" >&2
   }
