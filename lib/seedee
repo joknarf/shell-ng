@@ -82,14 +82,23 @@ function cddelete
 
 function cdselect
 {
-  typeset dir nb="$1" filter="$3"
+  typeset dir nb="$1" filter="$3" t l nl='$\n'
   [ "$_cdpr" ] && {
-    [ "$BASH" ] && [ "$_cdpr" = 1 ] && tput el >&2
+    [ "$_cdpr" = 1 ] && {
+      [[ "$BASH_VERSION" = 4.[3-9].* ]] && tput cuu1 >&2 # 4.2+
+      [ "$BASH" ] && [ "$_cdpr" = 1 ] && tput el >&2
+    }
     printf "\n" >&2
   }
   dir="$(selector -P "$CDPOWERLINE" -m "$nb" -p cd -k _cd_keys -F "$filter" -i "$2")"
   [ "$_cdpr" ] && {
     tput cuu1 >&2
+    # bash 3/4 bug repeating prompt/command
+    [ "$_cdpr" = 1 ] && [[ "$BASH_VERSION" = [3-4].* ]] && {
+      t=${PS1//$'\n'/}
+      l=$(( ${#PS1} - ${#t} ))
+      [ "$l" -gt 0 ] && tput cuu $l >&2
+    }
   }
   [[ $dir = \~ || $dir = \~/* ]] && dir="$HOME"${dir#\~}
   [ "$dir" ] && cdpush "$dir"
