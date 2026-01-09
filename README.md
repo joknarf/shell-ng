@@ -33,7 +33,7 @@ fly add joknarf/shell-ng
 ```
 thefly will allow to keep all your plugins available when connecting to remote servers through ssh, and even changing shell and user with sudo.
 
-Or manually source the plugin for your shell.
+Or manually source the plugin for your shell :  
 ```
 git clone https://github.com/joknarf/shell-ng
 source shell-ng/shell-ng.plugin.${SHELL#*/}
