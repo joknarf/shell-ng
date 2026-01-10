@@ -35,11 +35,11 @@ touch ${CDHISTFILE:=~/.cd_history}
 : ${CDNBDIRS:=10}
 : ${CDCOMPLETE:=n}
 [[ "$(uname -r)" = *-ish ]] && {
-  : ${CDHISTBIND:='\e!'}
+  : ${CDHISTBIND:='\e:'}
   : ${CDLBIND:='\e*'}
   : ${CDDOTBIND:='\e;'}
 }
-: ${CDHISTBIND:='\e[1;2B \e[1;5B'}
+: ${CDHISTBIND:='\e[1;2B \e[1;5B \e:'}
 : ${CDLBIND:='\e[1;6B'}
 : ${CDDOTBIND:='\e[1;2C \e[1;5C'}
 : ${CDUPBIND:='\e[1;2D \e[1;5D'}
