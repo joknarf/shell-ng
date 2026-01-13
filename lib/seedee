@@ -500,7 +500,7 @@ function _cdbind {
     CDHISTBIND=$'\e[Z' #Shit Tab
     trap '
       if [[ ${.sh.edchar} == "$CDHISTBIND" ]]; then
-        dir="$(ksh -c ". '"${.sh.file}"';_cdpr=2 cdhist \"${.sh.edtext}\"")"
+        dir="$(ksh -c ". '"${.sh.file}"';_cdpr=2;cdhist \"${.sh.edtext}\"")"
         if [ -d "$dir" ] ;then
           printf "$ cd %q" "$dir"
           \cd -- "$dir"
