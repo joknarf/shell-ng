@@ -91,7 +91,7 @@ function cdselect
   [ "$_cdpr" ] && {
     tput cuu1 >&2
     # bash 3/4 bug repeating prompt/command
-    [ "$_cdpr" = 1 ] && [[ "$BASH_VERSION" = [3-4].* ]] && {
+    [ "$_cdpr" = 1 ] && [[ "$BASH_VERSION" = @(3.*|4.[0-3].*) ]] && {
       t=${PS1//$'\n'/}
       l=$(( ${#PS1} - ${#t} ))
       [ "$l" -gt 0 ] && tput cuu $l >&2
