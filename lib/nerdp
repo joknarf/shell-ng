@@ -6,6 +6,9 @@
 [ "$ps1_loaded" ] && return 0
 ps1_loaded=1
 
+# RGB custom colors: black red green yellow blue magenta cyan white
+: ${ps1_col:="20;25;25  160;0;0  36;114;67  175;138;27  30;90;180  55;35;126  41;98;114  204;204;204"}
+: ${ps1_lcol:="32;64;64   252;78;110  24;237;147  222;220;18  118;141;255 255;126;128 142;221;244 238;238;238"}
 ps1_nfstyle="(/auto:exit_status (/lblack:elapse (/blue:userhost )/auto:git_branch )/lblack:cwd > | (/lblue/black/blue:info (/auto:addon (/magenta/white:venv (/auto:dfcheck (/auto:loadavg (/auto:freemem (/blue:time )"
 ps1_nfstyle2="(/auto:exit_status (/lblack:elapse (/blue:userhost )/lblack:cwd >/auto:git_branch > | (/lblue/black/blue:info (/auto:addon (/magenta/white:venv (/auto:dfcheck (/auto:loadavg (/auto:freemem (/blue:time )"
 ps1_pfstyle="/auto:exit_status /lblack:elapse /blue:userhost >/auto:git_branch >/lblack:cwd > | </lblue/black/blue:info </auto:addon </magenta/white:venv </auto:dfcheck </auto:loadavg </auto:freemem </blue:time >"
@@ -89,7 +92,7 @@ function ps1_pwline {
     : ${COLUMNS:=$(stty size 2>/dev/null)} # ash no $COLUMNS
     COLUMNS=${COLUMNS#* }
     : "${ps1_colors:="blue lblack green yellow/black lblue/black"}" # just some defaults
-    $ps1_awk -v pcol="$ps1_colors" -v columns="$COLUMNS" -v nopw="$ps1_nopw" -v kshbug="$ps1_kshbug" '
+    $ps1_awk -v col="$ps1_col" -v lcol="$ps1_lcol" -v pcol="$ps1_colors" -v columns="$COLUMNS" -v nopw="$ps1_nopw" -v kshbug="$ps1_kshbug" '
     function init_symbols(  symbols,ts) {
         if (nopw==0) {
             icons["warn"] = ""#
@@ -111,16 +114,31 @@ function ps1_pwline {
         }
         if (ARGV[1]=="symbols") exit(0)
     }
-    function init_colors() {
-        csi = "\033["
-        c = "black red green yellow blue magenta cyan white"
-        split(c, co)
+    function init_8col() {
         for (i in co) {
             colors[co[i]] = csi i+29 "m"
             colors["l"co[i]] = csi i+89 "m"
             colors["b"co[i]] = csi i+39 "m"
             colors["bl"co[i]] = csi i+99 "m"
         }
+    }
+    function init_rbg() {
+        split(col, cols)
+        split(lcol, lcols)
+        for (i in co) {
+            colors[co[i]] = csi "38;2;" cols[i] "m"
+            colors["l"co[i]] = csi "38;2;" lcols[i] "m"
+            colors["b"co[i]] = csi "48;2;" cols[i] "m"
+            colors["bl"co[i]] = csi "48;2;" lcols[i] "m"
+        }
+    }
+    function init_colors() {
+        csi = "\033["
+        c = "black red green yellow blue magenta cyan white"
+        split(c, co)
+        if (col) init_rbg()
+	else init_8col()
+
         colors["reset_all"] = csi "0m"
         colors["reset"] = csi "39m"
         colors["breset"] = csi "49m"
