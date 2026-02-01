@@ -7,7 +7,7 @@
 ps1_loaded=1
 
 # RGB custom colors: black red green yellow blue magenta cyan white
-: ${ps1_col:="20;25;25  160;0;0  36;114;67  175;138;27  30;90;180  55;35;126  41;98;114  204;204;204"}
+: ${ps1_col:="0;0;0  160;0;0  36;114;67  175;138;27  30;90;180  55;35;126  41;98;114  204;204;204"}
 : ${ps1_lcol:="32;64;64   252;78;110  24;237;147  222;220;18  118;141;255 255;126;128 142;221;244 238;238;238"}
 ps1_nfstyle="(/auto:exit_status (/lblack:elapse (/blue:userhost )/auto:git_branch )/lblack:cwd > | (/lblue/black/blue:info (/auto:addon (/magenta/white:venv (/auto:dfcheck (/auto:loadavg (/auto:freemem (/blue:time )"
 ps1_nfstyle2="(/auto:exit_status (/lblack:elapse (/blue:userhost )/lblack:cwd >/auto:git_branch > | (/lblue/black/blue:info (/auto:addon (/magenta/white:venv (/auto:dfcheck (/auto:loadavg (/auto:freemem (/blue:time )"
@@ -29,6 +29,8 @@ ps1_pfstyle="/auto:exit_status /lblack:elapse /blue:userhost >/auto:git_branch >
 : "${ps1_powerline:=$ps1_nfstyle}"
 : "${ps1_display:=nerd}" # nerdicons/powerline/nofont/ascii
 : "${ps1_sshmode:=raw}" # pssh mode (1:raw 2:b64 3:cfg 4:url)
+: "${ps1_user_char:=$}" # standard user prompt end
+: "${ps1_root_char:=#}" # root user prompt end
 
 #=========================
 type typeset >/dev/null 2>&1 || alias typeset=local # ash
@@ -102,7 +104,7 @@ function ps1_pwline {
         symbols[0] = "_                                                                          "
         symbols[1] = symbols[0]
         symbols[2] = "_                                                                          "
-        symbols[3] = "_ ■ • ■ •   • • • •   • • • •   • • • •   • • • •  • • • •   • • • •   • • • •  • • • •   • • • •   • • • •   • • • •   • • • •"
+        symbols[3] = "_ ► • ◄ •   ► • ◄ •   • • • •   • • • •   • • • •  • • • •   • • • •   • • • •  • • • •   • • • •   • • • •   • • • •   • • • •"
         symbols[4] = ""
         chars   =      ">   <     )   (     L   l     U   u     F   f    D   d     M   m     G  g     P   p     B   b     N   n     C   c     R   r"
         split(symbols[nopw],ts)
@@ -318,7 +320,7 @@ function ps1_info {
 type ps1_addon >/dev/null 2>&1 || ps1_addon() { :; }
 
 function ps1_uidprompt {
-    [ "$USER" = root ] && echo '#' || echo '$'
+    [ "$USER" = root ] && echo "$ps1_root_char" || echo "$ps1_user_char"
 }
 
 function ps1_freemem {
@@ -394,8 +396,8 @@ function ps1_prompt {
     typeset mksh
     [[ "$KSH_VERSION" = *MIRBSD* ]] && mksh=1
     $ps1_awk -v bash="${BASH+1}" -v zsh="${ZSH_VERSION+1}" -v ash="${BB_ASH_VERSION+1}" -v mksh=$mksh 'BEGIN {
+        prompt="$(ps1_uidprompt)"
         if (bash) {
-            prompt = "\\$"
             pre = "\\[\033]0;\\h\007"
             post = "${_:$((__ps1_cmd=\\#, __ps1_sec=-1, 0)):0}\\]"
             cmd["exit_status"] = "$(ps1_exit_status $? \\#)"
@@ -404,7 +406,6 @@ function ps1_prompt {
             cmd["time"] = "\\A"
             cmd["prompt"] = "\\$"
         } else if (zsh) {
-            prompt = "%(!.#.$)"
             pre = "%{\033]0;%m\007"
             post = "%}"
             cmd["elapse"] = "$__ps1_elapse"
@@ -414,7 +415,6 @@ function ps1_prompt {
             cmd["prompt"] = "%(!.#.$)"
         } else {
             pre="\033]0;$ps1_hostname\007"
-            prompt="$(ps1_uidprompt)"
             post="${_:$((__ps1_cmd=$HISTCMD , __ps1_sec=-1 , 0)):0}"
             if (ash||mksh) post=""
             cmd["exit_status"] = "$(ps1_exit_status $? $HISTCMD)"
@@ -453,7 +453,7 @@ function ps1_style
         blur) p=${ps1_nfstyle//[\)]/D};p1=${p%|*};p2=${p#*|};p="$p1|${p2//[\(]/d}";;
         flame) p=${ps1_nfstyle//[\)]/F};p1=${p%|*};p2=${p#*|};p="$p1|${p2//[\(]/f}";;
         tesla) p=${ps1_nfstyle//[\)]/G};p1=${p%|*};p2=${p#*|};p="$p1|${p2//[\(]/G}";;
-        powerline) p=${ps1_nfstyle/??blue:userhost/\/blue:userhost};p=${p%?};p=${p//\(/<};p=${p//\)/>};;
+        powerline) p=${ps1_nfstyle//\(/<};p=${p//\)/>};;
         island|default) p=$ps1_nfstyle;;
     esac
     [ "$1" != atarist ] && [ "$1" != powerline ] && p="${p:0:$((${#p}-1))})"
