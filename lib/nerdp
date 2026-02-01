@@ -127,7 +127,6 @@ function ps1_pwline {
     function init_rbg() {
         split(col, cols)
         split(lcol, lcols)
-        if (kshbug=="1") k="\033[s\r\033[u"
         for (i in co) {
             colors[co[i]] = csi "38;2;" cols[i] "m" k
             colors["l"co[i]] = csi "38;2;" lcols[i] "m" k
@@ -136,7 +135,7 @@ function ps1_pwline {
         }
     }
     function init_colors() {
-        if (kshbug=="1") k="\033[s\r\033[u"
+        if (kshbug=="1") k="\033[s\r\033[u" # save/to 0 col/restore
         csi = "\033["
         c = "black red green yellow blue magenta cyan white"
         split(c, co)
