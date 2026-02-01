@@ -94,7 +94,7 @@ function ps1_pwline {
     : ${COLUMNS:=$(stty size 2>/dev/null)} # ash no $COLUMNS
     COLUMNS=${COLUMNS#* }
     : "${ps1_colors:="blue lblack green yellow/black lblue/black"}" # just some defaults
-    $ps1_awk -v col="$ps1_col" -v lcol="$ps1_lcol" -v pcol="$ps1_colors" -v columns="$COLUMNS" -v nopw="$ps1_nopw" '
+    $ps1_awk -v col="$ps1_col" -v lcol="$ps1_lcol" -v pcol="$ps1_colors" -v columns="$COLUMNS" -v nopw="$ps1_nopw" -v kshbug="$ps1_kshbug" '
     function init_symbols(  symbols,ts) {
         if (nopw==0) {
             icons["warn"] = ""#
@@ -118,32 +118,34 @@ function ps1_pwline {
     }
     function init_8col() {
         for (i in co) {
-            colors[co[i]] = csi i+29 "m"
-            colors["l"co[i]] = csi i+89 "m"
-            colors["b"co[i]] = csi i+39 "m"
-            colors["bl"co[i]] = csi i+99 "m"
+            colors[co[i]] = csi i+29 "m" k
+            colors["l"co[i]] = csi i+89 "m" k
+            colors["b"co[i]] = csi i+39 "m" k
+            colors["bl"co[i]] = csi i+99 "m" k
         }
     }
     function init_rbg() {
         split(col, cols)
         split(lcol, lcols)
+        if (kshbug=="1") k="\033[s\r\033[u"
         for (i in co) {
-            colors[co[i]] = csi "38;2;" cols[i] "m"
-            colors["l"co[i]] = csi "38;2;" lcols[i] "m"
-            colors["b"co[i]] = csi "48;2;" cols[i] "m"
-            colors["bl"co[i]] = csi "48;2;" lcols[i] "m"
+            colors[co[i]] = csi "38;2;" cols[i] "m" k
+            colors["l"co[i]] = csi "38;2;" lcols[i] "m" k
+            colors["b"co[i]] = csi "48;2;" cols[i] "m" k
+            colors["bl"co[i]] = csi "48;2;" lcols[i] "m" k
         }
     }
     function init_colors() {
+        if (kshbug=="1") k="\033[s\r\033[u"
         csi = "\033["
         c = "black red green yellow blue magenta cyan white"
         split(c, co)
         if (col) init_rbg()
 	else init_8col()
 
-        colors["reset_all"] = csi "0m"
-        colors["reset"] = csi "39m"
-        colors["breset"] = csi "49m"
+        colors["reset_all"] = csi "0m" k
+        colors["reset"] = csi "39m" k
+        colors["breset"] = csi "49m" k
         colors["wrapoff"] = csi "?7l"
         colors["wrapon"] = csi "?7h"
     }
@@ -210,7 +212,7 @@ function ps1_pwline {
                     else
                         delete txt[j]
                 }
-                for(j=0;j<emptywidth;j++) printf(" ") # printf("%*s", emptywidth, " ") not busybox compatible
+                printf("\r");printf("\033[%dC ", width+emptywidth)
                 continue
             }
             if (txt[i] == symb[i]) { bgs[i]="reset"; width+=swidth[i] }
@@ -218,12 +220,14 @@ function ps1_pwline {
             gsub("[|]", colors[sepc[i]] sep[symb[i]] colors[fgs[i]], txt[i])
             if (rev[symb[i]]) {
                 printf("%s", colors[bgs[i]] sym[symb[i]])
-                if (txt[i] != symb[i])
+                if (txt[i] != symb[i]) {
                     printf("%s", colors[fgs[i]] colors["b"bgs[i]] icos[i] " " txt[i] " " colors[bgs[i]])
+                }
             } else {
                 printf("%s", colors["b"bgs[i]] sym[symb[i]])
-                if (txt[i] != symb[i])
+                if (txt[i] != symb[i]) {
                     printf("%s", colors[fgs[i]] icos[i] " " txt[i] " " colors["reset_all"] colors[bgs[i]] colors["b"bgs[i]])
+                }
             }
         }
         printf("%s\n", colors["reset_all"])
@@ -413,7 +417,7 @@ function ps1_prompt {
             cmd["time"] = "$__ps1_clock"
             cmd["prompt"] = "%(!.#.$)"
         } else {
-            pre="\033]0;$ps1_hostname\007"
+            pre="\033]0;$ps1_hostname\007\033]s\r\033]u"
             post="${_:$((__ps1_cmd=$HISTCMD , __ps1_sec=-1 , 0)):0}"
             if (ash||mksh) post=""
             cmd["exit_status"] = "$(ps1_exit_status $? $HISTCMD)"
