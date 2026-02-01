@@ -94,7 +94,7 @@ function ps1_pwline {
     : ${COLUMNS:=$(stty size 2>/dev/null)} # ash no $COLUMNS
     COLUMNS=${COLUMNS#* }
     : "${ps1_colors:="blue lblack green yellow/black lblue/black"}" # just some defaults
-    $ps1_awk -v col="$ps1_col" -v lcol="$ps1_lcol" -v pcol="$ps1_colors" -v columns="$COLUMNS" -v nopw="$ps1_nopw" -v kshbug="$ps1_kshbug" '
+    $ps1_awk -v col="$ps1_col" -v lcol="$ps1_lcol" -v pcol="$ps1_colors" -v columns="$COLUMNS" -v nopw="$ps1_nopw" '
     function init_symbols(  symbols,ts) {
         if (nopw==0) {
             icons["warn"] = ""#
@@ -177,7 +177,7 @@ function ps1_pwline {
         init_colors()
         init_symbols()
         split(pcol, pcols, " ")
-        printf("\r%s%s", colors["wrapoff"], colors["black"])
+        printf("\r%s", colors["black"])
         j=1
         for (i=1;i<ARGC;i++) {
             if (ARGV[i] == "|" || (ARGV[i] in sym)) {
@@ -210,8 +210,7 @@ function ps1_pwline {
                     else
                         delete txt[j]
                 }
-                if (kshbug=="1") {printf("\n"); system("tput cuf " width+emptywidth)}
-                else for(j=0;j<emptywidth;j++) printf(" ") # printf("%*s", emptywidth, " ") not busybox compatible
+                for(j=0;j<emptywidth;j++) printf(" ") # printf("%*s", emptywidth, " ") not busybox compatible
                 continue
             }
             if (txt[i] == symb[i]) { bgs[i]="reset"; width+=swidth[i] }
@@ -227,7 +226,7 @@ function ps1_pwline {
                     printf("%s", colors[fgs[i]] icos[i] " " txt[i] " " colors["reset_all"] colors[bgs[i]] colors["b"bgs[i]])
             }
         }
-        printf("%s%s\n", colors["reset_all"], colors["wrapon"])
+        printf("%s\n", colors["reset_all"])
     }' "$@"
 }
 
