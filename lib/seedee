@@ -323,7 +323,7 @@ function locatedir {
 }
 
 function cdlocate {
-  [ "$_cdpr" = 1 ] && tput el >&2
+  [ "$_cdpr" = 1 ] && _tput el >&2
   cdselect -1 "$(locatedir "$@")"
 }
 
