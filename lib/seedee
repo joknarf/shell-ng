@@ -5,8 +5,6 @@
 #   . ./seedee
 #   
 
-declare -F selector >/dev/null 2>&1 || . "$(\cd "${BASH_SOURCE%/*}";pwd)/lib/selector"
-
 unalias cd 2>/dev/null
 type typeset >/dev/null 2>/dev/null || alias typeset=local # ash
 touch ${CDHISTFILE:=~/.cd_history}
