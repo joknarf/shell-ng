@@ -135,8 +135,8 @@ function ps1_pwline {
         }
     }
     function init_colors() {
-        if (kshbug=="1") k="\033[s\r\033[u" # save/to 0 col/restore
         csi = "\033["
+        if (kshbug=="1") k=csi "s\r" csi "u" # save/to 0 col/restore
         c = "black red green yellow blue magenta cyan white"
         split(c, co)
         if (col) init_rbg()
