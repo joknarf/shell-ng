@@ -48,14 +48,14 @@ _complete-ng_key() {
       _force_nsel=$_nsel
       [ -r "$item" ] && [ -f "$item" ] || return 0
       ${PAGER:-less -+EX} "$item"
-      tput civis
+      _tput civis
       return 0
     ;;
     'OS') # F4
       _force_nsel=$_nsel
       [ -r "$item" ] && [ -f "$item" ] || return 0
       ${EDITOR:-vi} "$item"
-      tput civis
+      _tput civis
       return 0
     ;;
   esac
@@ -95,9 +95,9 @@ _complete-ng() {
     [ "${#COMPREPLY[@]}" = 0 ] && {
       printf 'Not found !\r' >&2
       sleep "0.2"
-      tput "el" >&2
-      tput "cuu1" >&2
-      tput "cuf" "$((col-1))" >&2
+      _tput "el" >&2
+      _tput "cuu1" >&2
+      _tput "cuf" "$((col-1))" >&2
       return 1
     }
   }
@@ -109,8 +109,8 @@ _complete-ng() {
   COMPREPLY=( "$(SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key $selopt -i "$(printf "%s\n" "${COMPREPLY[@]}"|sort -u)" -F "$longword")" )
   set +f
   #kill -WINCH $$ # force redraw prompt
-  tput "cuu1" >&2
-  tput "cuf" "$((col-1))" >&2
+  _tput "cuu1" >&2
+  _tput "cuf" "$((col-1))" >&2
   [ ! "${COMPREPLY[0]}" ] && {
     compopt +o "filenames" -o "nospace" 2>/dev/null
     [ "$word" != "$longword" ] && COMPREPLY=( "$longword" ) && return 0

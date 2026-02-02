@@ -61,17 +61,17 @@ function cdselect
 {
   typeset dir nb="$1" filter="$3" t l
   [ "$_cdpr" ] && {
-    [ "$_cdpr" = 1 ] && [ "$BASH" ] && tput el >&2
+    [ "$_cdpr" = 1 ] && [ "$BASH" ] && _tput el >&2
     printf "\n" >&2
   }
   dir="$(selector -P "$CDPOWERLINE" -m "$nb" -p cd -k _cd_keys -F "$filter" -i "$2")"
   [ "$_cdpr" ] && {
-    tput cuu1 >&2
+    _tput cuu1 >&2
     # bash 3/4 bug repeating prompt/command
     [ "$_cdpr" = 1 ] && [[ "$BASH_VERSION" = @(3.*|4.[0-3].*) ]] && {
       t=${PS1//$'\n'/}
       l=$(( ${#PS1} - ${#t} ))
-      [ "$l" -gt 0 ] && tput cuu $l >&2
+      [ "$l" -gt 0 ] && _tput cuu $l >&2
     }
   }
   [[ $dir = \~ || $dir = \~/* ]] && dir="$HOME"${dir#\~}
@@ -151,7 +151,7 @@ function _cd_keys
 function cdhist {
   typeset gr=. nb=${CDNBDIRS:-10} cdhf=${CDHISTFILE:-~/.cd_history} first='' awk=awk dir
   [ ! -s "$cdhf" ] && printf "%s" "$CDINITDIRS" >$cdhf
-  [ "$_cdpr" = 1 ] && [ "$BASH" ] && tput el >&2
+  [ "$_cdpr" = 1 ] && [ "$BASH" ] && _tput el >&2
   [ "$1" = -a ] && nb=-1 && shift
   [ "$1" = - ] && first="exit" && shift
   [ "$1" = -l ] && shift && { cdlocate "$@"; return; }
@@ -258,9 +258,9 @@ _cdhist_cd() {
   [ ${#COMPREPLY[@]} = 0 ] && {
     printf '\nNot found !\r'
     sleep 0.2
-    tput el >&2
-    tput cuu1 >&2
-    tput cuf $((col-1)) >&2
+    _tput el >&2
+    _tput cuu1 >&2
+    _tput cuf $((col-1)) >&2
     return 1
   }
   COMPREPLY=( "${COMPREPLY[@]/#$hs/$ts}" )
@@ -271,7 +271,7 @@ _cdhist_cd() {
   IFS=$'\n'
   COMPREPLY=( "$(_cdpr=2 cdselect $CDNBDIRS "$(printf "%s\n" "${COMPREPLY[@]}"|sort -u)" "$longword")" )
   IFS=$' \t\n'
-  tput cuf $((col-1)) >&2
+  _tput cuf $((col-1)) >&2
   [ "${COMPREPLY[0]}" ] && {
     COMPREPLY[0]="${COMPREPLY[0]/#$ts/$hs}"
     COMPREPLY[0]="${COMPREPLY[0]//\/\//\/}"
@@ -304,7 +304,7 @@ function cdsub {
   gr="${gr%/}"
   printf "%s" " Searching directories..." >&2
   cdselect "$CDNBDIRS" "$(find -L "$orig" -xdev -mindepth 1 -maxdepth $depth '(' -name '.?*' -prune -o -name '__pycache__' -prune ')' -o -type d -print |\
-    sort -u |grep -- "$gr" 2>/dev/null;tput cub 25 >&2;tput el >&2)"
+    sort -u |grep -- "$gr" 2>/dev/null;_tput cub 25 >&2;_tput el >&2)"
 }
 
 # use locate to get directories

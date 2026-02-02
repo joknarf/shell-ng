@@ -234,11 +234,11 @@ _complete_ng_selector() {
     nbitems="${#items[@]}"
     items="${(F)items[@]}" # separated by newlines
     if (( nbitems > 1 )); then
-        tput cud1 >/dev/tty
+        _tput cud1 >/dev/tty
         longword="$(printf "%s\n" "${items}"|sed -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
         selected="$(SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "$items" -o filenames -F "$longword")"
         code="$?"
-        tput cuu1 >/dev/tty
+        _tput cuu1 >/dev/tty
     else
        selected="$items"
        code="0"
@@ -295,14 +295,14 @@ _complete-ng_key() {
       _force_nsel=$_nsel
       [ -r "$item" ] && [ -f "$item" ] || return 0
       less -+EX "$item"
-      tput civis
+      _tput civis
       return 0
     ;;
     'OS') # F4
       _force_nsel=$_nsel
       [ -r "$item" ] && [ -f "$item" ] || return 0
       ${EDITOR:-vi} "$item"
-      tput civis
+      _tput civis
       return 0
     ;;
   esac
