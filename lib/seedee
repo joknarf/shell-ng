@@ -4,6 +4,7 @@
 #   dir history / subdir explore
 #   . ./seedee
 #   
+[ "$KSH_VERSION" ] && ! type selector >/dev/null 2>&1 && . "$(\cd "${.sh.file%/*}";pwd)/selector"
 
 unalias cd 2>/dev/null
 type typeset >/dev/null 2>/dev/null || alias typeset=local # ash
