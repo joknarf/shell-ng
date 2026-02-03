@@ -1,6 +1,12 @@
 # redo bash command history
 # Author : Franck Jouvanceau
 #
+# bash bind -x prefix
+: ${REDO_USER_CHAR:="$ps1_user_char"} #nerpd
+: ${REDO_ROOT_CHAR:="$ps1_root_char"} #nerdp
+: ${REDO_USER_CHAR:="$"}
+: ${REDO_ROOT_CHAR:="#"}
+
 _get_hist()
 {
   typeset _hist
@@ -90,8 +96,8 @@ _redow() {
 # bash bind -x bugged clearing prompt/command
 _redob() {
     typeset _ps1
-    [ "$UID" = 0 ] && _ps1='#' || _ps1='$'
-    printf "%s " "$_ps1" >&2
+    [ "$UID" = 0 ] && _ps1="$REDO_ROOT_CHAR" || _ps1="$REDO_USER_CHAR"
+    printf "\r%s " "$_ps1" >&2
     READLINE_LINE=$(_redo_selector "$READLINE_LINE")
     READLINE_POINT=${#READLINE_LINE}
 }
