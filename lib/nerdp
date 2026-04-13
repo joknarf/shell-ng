@@ -532,8 +532,4 @@ elif [ "$BASH" ] ; then
 else
     [ "$ps1_kshbug" = 0 ] && trap ps1_time_cmd DEBUG 2>/dev/null
 fi
-
-
-return 0
-
-####### end powerline-awk ########
+:
