@@ -237,7 +237,7 @@ _complete_ng_selector() {
         print $1$4
     }' q="'" <<<"$all_lines")"
     if (( ${#lines[@]} > 1 )) ;then
-        _tput cud1 >/dev/tty
+        printf $'\n' >/dev/tty
         longword="$(sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}' <<<"$items")"
         SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "$items" -o filenames -F "$longword" >/dev/null
         code="$?"
