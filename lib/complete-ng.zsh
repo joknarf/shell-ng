@@ -7,6 +7,7 @@ type selector >/dev/null 2>&1 || . "$(\cd "${0%/*}";pwd)/lib/selector"
 # use a whitespace char or anchors don't work
 
 _COMPLETE_NG_SEP=$'\u00a0'
+#_COMPLETE_NG_SEP=$'\t'
 _COMPLETE_NG_SPACE_SEP=$'\v'
 _COMPLETE_NG_NONSPACE=$'\u00ad'
 _COMPLETE_NG_FLAGS=( a k f q Q e n U l 1 2 C )
@@ -226,22 +227,24 @@ _complete_ng_selector() {
 
 
     local all_lines items longword selected s nbitems
-    all_lines=$( (( ${#lines[@]} )) && printf %s\\n "${lines[@]}"; cat)
-    items="$(printf %s "$all_lines"|sed -e "s/$_COMPLETE_NG_SEP.*//")" # -e "s/[\\']//g")"
-    set -f
-    eval "items=( $items )"
-    set +f
-    nbitems="${#items[@]}"
-    items="${(F)items[@]}" # separated by newlines
-    if (( nbitems > 1 )); then
+    IFS=$'\n' lines+=($(cat)); IFS=$' \t\n'
+    all_lines=$( (( ${#lines[@]} )) && printf %s\\n "${(@Q)lines}")
+    items="$(awk -F"$_COMPLETE_NG_SEP" '{
+        sub(q q,"",$1)
+        sub(q q"$","",$1)
+        sub(".* -- ","\t",$4)
+        if ($4 !~ /^\t/) $4=""
+        print $1$4
+    }' q="'" <<<"$all_lines")"
+    if (( ${#lines[@]} > 1 )) ;then
         _tput cud1 >/dev/tty
-        longword="$(printf "%s\n" "${items}"|sed -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
-        selected="$(SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "$items" -o filenames -F "$longword")"
+        longword="$(sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}' <<<"$items")"
+        SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "$items" -o filenames -F "$longword" >/dev/null
         code="$?"
         _tput cuu1 >/dev/tty
     else
-       selected="$items"
-       code="0"
+        selected="${items%%$'\t'*}"
+        code="0"
     fi
     [ ! "$selected" ] && [ "$longword" != "$PREFIX" ] && code="0" && selected="$longword"
     s="${selected}"
