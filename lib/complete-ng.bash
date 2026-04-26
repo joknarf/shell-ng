@@ -104,7 +104,7 @@ _complete-ng() {
   }
   type "compopt" &>/dev/null && { [[ $(compopt) = *-o\ filename* ]] || selopt=''; }
   # longest common prefix
-  longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
+  longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
   [ "$longword" ] || longword="$word"
   set -f
   COMPREPLY=( "$(SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key $selopt -i "$(printf "%s\n" "${COMPREPLY[@]}"|"${sortcmd[@]}")" -F "$longword")" )
