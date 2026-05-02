@@ -79,7 +79,7 @@ comphelp() {
       }
     ;;
     find)
-        mapfile -t COMPREPLY <<<"$(man find |awk '/^       -/{print $0;getline;print $0}/EXIT/{exit}' 2>&1| parse_help opts="$opts")"
+        _maphelp - <<<"$(man find |awk '/^       -/{print $0;getline;print $0}/EXIT/{exit}' 2>&1)"
     ;;
     puppet)
       (( ${#_puppet_help[@]} == 0 )) && _puppet_cmd_help
@@ -87,7 +87,7 @@ comphelp() {
         typeset _cmd i
         _cmd="${COMP_WORDS[1]}"
         [ "${_puppet_help[$_cmd]}" ] && \
-            mapfile -t COMPREPLY <<<"$($cmd "$_cmd" -h 2>&1|sed -e 's/[*:]//g' | parse_help opts="$opts")"
+            _maphelp - <<<"$($cmd "$_cmd" -h 2>&1|sed -e 's/[*:]//g')"
         return
       }
       [ "$COMP_CWORD" = 1 ] && {
