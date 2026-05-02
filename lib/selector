@@ -14,8 +14,8 @@
 : ${SELECTOR_COL_ARROW:="41;98;114"}  # cyan
 : ${SELECTOR_COL_ITEM:="118;141;255"} # light blue
 : ${SELECTOR_COL_SELECTED:="42;221;244"} # light cyan
-: ${SELECTOR_COL_COMMENT:="168;110;2"} # 
-: ${SELECTOR_COL_COMSEL:="222;203;49"} #
+: ${SELECTOR_COL_COMMENT:="168;110;2"} # yellow
+: ${SELECTOR_COL_COMSEL:="222;203;49"} # ligth yellow
 : ${SELECTOR_USE_TPUT:=false}         # use ansi 
 
 $SELECTOR_USE_TPUT && alias _tput=tput

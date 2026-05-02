@@ -1,7 +1,8 @@
 # complete-ng : bash completion nextgen
 # Author : Franck Jouvanceau
 
-declare -F selector >/dev/null 2>&1 || . "$(\cd "${BASH_SOURCE%/*}";pwd)/lib/selector"
+. "$(\cd "${BASH_SOURCE%/*}";pwd)/comphelp"
+declare -F selector >/dev/null 2>&1 || . "$(\cd "${BASH_SOURCE%/*}";pwd)/selector"
 
 #unalias complete 2>/dev/null
 #alias complete=complete-ng
@@ -73,7 +74,8 @@ _complete-ng() {
         fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
     }
   }
-  [ "$fn" ] && { $fn "$@"; } || {
+  [ "$fn" ] && { $fn "$@"; } 
+  (( ${#COMPREPLY[@]} > 0 )) || {
     type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
         compgen -f /non-existing-dir/ >/dev/null
     [ "$COMP_CWORD" -le 0 ] && [ "$word" ] && opt="-c"
@@ -106,6 +108,7 @@ _complete-ng() {
   # longest common prefix
   longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
   [ "$longword" ] || longword="$word"
+  comphelp
   set -f
   COMPREPLY=( "$(SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key $selopt -i "$(printf "%s\n" "${COMPREPLY[@]}"|"${sortcmd[@]}")" -F "$longword")" )
   set +f

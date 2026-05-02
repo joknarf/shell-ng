@@ -1,0 +1,226 @@
+declare -A _git_help _puppet_help 2>/dev/null || {
+  # not supported
+  comphelp() { :; }
+  return
+}
+type gawk >/dev/null 2>&1 && _comp_awk=gawk || _comp_awk=awk
+
+_git_cmd_help() {
+  typeset k v
+  while read k v;do
+    _git_help["$k"]="$v"
+  done <<<$(git help -a |grep '^   ')
+}
+
+_puppet_cmd_help() {
+  typeset k v
+  while read k v;do
+    _puppet_help["$k"]="$v"
+  done <<<$(puppet help |grep '    [[:alnum:]]')
+}
+
+type mapfile >/dev/null 2>&1|| mapfile() {
+    typeset o="$IFS"
+    shift # -t
+    IFS=$'\n'; set -f; eval $1'=( $(cat -) )'; set +f; IFS="$o"
+}
+
+_maphelp()
+{
+  mapfile -t COMPREPLY <<<"$("$@" 2>&1| parse_help opts="$opts")"
+}
+
+comphelp() {
+  typeset cmd="${COMP_WORDS[0]}"
+  typeset opts="${COMPREPLY[*]}"
+  [ "$fn" = _longopt ] && {
+    _maphelp $cmd --help
+    return
+  }
+  case "$cmd" in
+    tar|sudo|sudoedit) 
+      [[ $opts = -* ]] && {
+        _maphelp command $cmd --help
+      }	
+    ;;
+    ssh|sftp|scp)
+      [[ $opts = -* ]] && {
+        _maphelp command man $cmd
+      }	
+    ;;
+    git)
+      (( ${#_git_help[@]} == 0 )) && _git_cmd_help
+      [[ $opts = -* ]] && {
+        typeset git_cmd i
+        git_cmd="${COMP_WORDS[1]}"
+        [ "${_git_help[$git_cmd]}" ] && _maphelp $cmd "$git_cmd" -h
+        return
+      }	
+      [ "$COMP_CWORD" = 1 ] && {
+        for ((i=0;i<${#COMPREPLY[@]};i++));do
+          git_cmd="${COMPREPLY[$i]}"
+          COMPREPLY[$i]="$git_cmd"$'\t'"${_git_help[${git_cmd% }]}"
+        done
+      }
+    ;;
+    find)
+        mapfile -t COMPREPLY <<<"$(man find |awk '/^       -/{print $0;getline;print $0}/EXIT/{exit}' 2>&1| parse_help opts="$opts")"
+    ;;
+    puppet)
+      (( ${#_puppet_help[@]} == 0 )) && _puppet_cmd_help
+      [[ $opts = -* ]] && {
+        typeset _cmd i
+        _cmd="${COMP_WORDS[1]}"
+        [ "${_puppet_help[$_cmd]}" ] && \
+            mapfile -t COMPREPLY <<<"$($cmd "$_cmd" -h 2>&1|sed -e 's/[*:]//g' | parse_help opts="$opts")"
+        return
+      }
+      [ "$COMP_CWORD" = 1 ] && {
+        for ((i=0;i<${#COMPREPLY[@]};i++));do
+          _cmd="${COMPREPLY[$i]}"
+          COMPREPLY[$i]="$_cmd"$'\t'"${_puppet_help[${_cmd% }]}"
+        done
+      }
+    ;;
+  esac
+}
+
+function parse_help()
+{
+  $_comp_awk '
+function trim(s) {
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
+    return s
+}
+
+function norm(s) {
+    gsub(/[[:space:]]+/, " ", s)
+    return trim(s)
+}
+
+function split_optarg(s,    m,opt,arg) {
+    s = trim(s)
+    opt = s
+    arg = ""
+    # --name[=ARG]
+    if (match(s, /^(--[^[:space:]=]+)(\[=.*\])$/, m)) {
+        opt = m[1]; arg = m[2]
+    }
+    # --name=ARG
+    else if (match(s, /^(--[^[:space:]=]+)(=.*)$/, m)) {
+        opt = m[1]; arg = m[2]
+    }
+    # --name ARG
+    else if (match(s, /^(--[^[:space:]]+)[[:space:]]+(.+)$/, m)) {
+        opt = m[1]; arg = m[2]
+    }
+    # -xxxxx #test
+    else if (match(s, /^(-[[:alnum:]]+)[[:space:]]+(.+)$/, m) && s !~ /^-[[:alnum:]]$/) {
+        opt = m[1]; arg = m[2]
+    }
+    # -xxxxx #test
+    else if (match(s, /^(-[[:alnum:]]+)$/, m) && s !~ /^-[[:alnum:]]$/) {
+        opt = m[1]; 
+    }
+    # -x ARG
+    else if (match(s, /^(-[[:alnum:]])[[:space:]]+(.+)$/, m)) {
+        opt = m[1]; arg = m[2]
+    }
+    # -xARG
+    else if (match(s, /^(-[[:alnum:]])(.+)$/, m) && s !~ /^-[[:alnum:]]$/) {
+        opt = m[1]; arg = m[2]
+    }
+
+    RET_OPT = trim(opt)
+    RET_ARG = norm(arg)
+}
+
+function print_pair(opt,arg,desc, txt) {
+    txt = desc
+    if (arg != "") {
+        if (txt != "")
+            txt = arg ", " txt
+        else
+            txt = arg
+    }
+    if (a_done[opt]) return;
+    if (! opts)
+      print opt "\t" txt
+    if (opt in a_opts && txt) {
+      print a_opts[opt] "\t" txt
+      a_done[opt] = 1
+    }
+}
+
+function emit(opt,desc, a,b) {
+    opt = trim(opt)
+    if (opt ~ /\[no-\]/) {
+        a = opt
+        gsub(/\[no-\]/, "", a)
+        split_optarg(a)
+        print_pair(RET_OPT, RET_ARG, desc)
+        b = opt
+        sub(/\[no-\]/, "no-", b)
+        split_optarg(b)
+        print_pair(RET_OPT, RET_ARG, desc)
+    } else {
+        split_optarg(opt)
+        print_pair(RET_OPT, RET_ARG, desc)
+    }
+}
+
+function flush(   i,n) {
+    if (!pending)
+        return
+    desc = norm(desc)
+    n = split(optblock, arr, /,[[:space:]]*/)
+    for (i = 1; i <= n; i++)
+        emit(arr[i], desc)
+    pending = 0
+    optblock = ""
+    desc = ""
+}
+
+BEGIN {
+    pending = 0
+}
+
+NR==1 {
+    split(opts, t)
+    for(i in t) a_opts[gensub("=$","",1,t[i])] = t[i]
+}
+
+
+/^[[:space:]]+-/ {
+    flush()
+    line = $0
+    sub(/^[[:space:]]+/, "", line)
+    if (match(line, /[[:space:]]{2,}[^-[:space:]]/)) {
+        optblock = substr(line, 1, RSTART - 1)
+        desc     = substr(line, RSTART + RLENGTH - 1)
+    } else {
+        optblock = line
+        desc = ""
+    }
+    pending = 1
+    next
+}
+
+pending && /^[[:space:]]+/ {
+    line = trim($0)
+    # ignore headers
+    if (line !~ /^-/) {
+        if (desc != "")
+            desc = desc " " line
+        else
+            desc = line
+    }
+    next
+}
+
+END {
+    flush()
+    for (i in a_opts) if (!(i in a_done)) print a_opts[i]
+}
+' "$@"
+}
