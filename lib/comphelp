@@ -62,7 +62,7 @@ comphelp() {
     ;;
     ssh|sftp|scp)
       type man >/dev/null 2>&1 || return
-      [[ $opts = -* ]] && _maphelp command man $cmd
+      [[ $opts = -* ]] && _maphelp - <<<"$(man $cmd |col -b)"
     ;;
     git)
       (( ${#_git_help[@]} == 0 )) && _git_cmd_help
