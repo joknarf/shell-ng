@@ -61,6 +61,7 @@ comphelp() {
       [[ $opts = -* ]] && _maphelp command $cmd -h
     ;;
     ssh|sftp|scp)
+      type man >/dev/null 2>&1 || return
       [[ $opts = -* ]] && _maphelp command man $cmd
     ;;
     git)
@@ -79,6 +80,7 @@ comphelp() {
       }
     ;;
     find|gfind)
+        type man >/dev/null 2>&1 || return
         _maphelp - <<<"$(man $cmd |col -b |awk '/-anewer and/{next}/^     +-/{print $0;getline;print $0}/EXIT/{exit}' 2>&1)"
     ;;
     puppet)
