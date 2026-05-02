@@ -78,8 +78,8 @@ comphelp() {
         done
       }
     ;;
-    find)
-        _maphelp - <<<"$(man find |awk '/^       -/{print $0;getline;print $0}/EXIT/{exit}' 2>&1)"
+    find|gfind)
+        _maphelp - <<<"$(man $cmd |col -b |awk '/-anewer and/{next}/^     +-/{print $0;getline;print $0}/EXIT/{exit}' 2>&1)"
     ;;
     puppet)
       (( ${#_puppet_help[@]} == 0 )) && _puppet_cmd_help
