@@ -29,7 +29,7 @@ _maphelp()
   mapfile -t COMPREPLY <<<"$(
     case "$1" in
       -) cat - ;;
-      *) "$@" 2>&1 ;;
+      *) TERM=dumb "$@" 2>&1 ;;
     esac| _parse_help_desc opts="$opts"
   )"
 }
