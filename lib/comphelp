@@ -38,37 +38,37 @@ comphelp() {
   local opts="${COMPREPLY[*]}"
   case "$fn" in
     _longopt|_comp_complete_longopt)
-      _maphelp $cmd --help
+      _maphelp "$cmd" --help
       return
     ;;
   esac
   case "$cmd" in
     2to3|a2x|aclocal|aclocal-1.10|aclocal-1.11|aclocal-1.12|aclocal-1.13|aclocal-1.14|aclocal-1.15|aclocal-1.16|acpi|_adb|alternatives|ant|appdata-validate|arch|arm-koji|arp|asciidoc|asciidoc.py|augmatch|augprint|augtool|autoconf|autoheader|automake|automake-1.10|automake-1.11|automake-1.12|automake-1.13|automake-1.14|automake-1.15|automake-1.16|autoreconf|autoscan|autoupdate|bmake|bsdtar|bzip2|_cal|ccache|ccze|cfagent|cfrun|chage|checksec|chmod|chpasswd|chrome|chromium|chromium-browser|chrpath|_chsh|ciptool|civclient|civserver|cksfv|clzip|colormake|configure|cpan2dist|cppcheck|createdb|createuser|cryptsetup|curl|cvs|dd|deja-dup|desktop-file-validate|dfutool|dict|_dmesg|dmypy|dnssec-keygen|dpkg|dpkg-deb|dpkg-query|dpkg-reconfigure|dropdb|dropuser|dselect|ecryptfs-migrate-home|edquota|_eject|eog|ether-wake|etherwake|evince|faillog|feh|file|file-roller|fio|firefox|flake8|freeciv|freeciv-gtk2|freeciv-gtk3|freeciv-sdl|freeciv-server|freeciv-xaw|getent|gkrellm|gkrellm2|gmake|gnokii|gnome-mplayer|gnome-screenshot|gnumake|google-chrome|google-chrome-stable|gpasswd|gpgv|gpgv2|gphoto2|groupadd|groupdel|groupmems|groupmod|grpck|gssdp-discover|gtar|gzip|hciattach|hciconfig|hcitool|hd|hddtemp|_hexdump|hostname|hping|hping2|hping3|htop|htpasswd|hunspell|_hwclock|iceweasel|iconv|id|idn|ifdown|ifquery|ifstat|ifstatus|ifup|influx|info|inotifywait|inotifywatch|interdiff|ipcalc|isort|java|javac|javadoc|jpegoptim|jq|jshint|jsonschema|k3b|kcov|killall|koji|l2ping|lastlog|lbzip2|ldapadd|ldapcompare|ldapdelete|ldapmodify|ldapmodrdn|ldappasswd|ldapsearch|ldapvi|ldapwhoami|lftp|links|links2|lintian|lintian-info|locale-gen|lrzip|lsscsi|lsusb|lua|luac|luseradd|luserdel|lusermod|lzip|lzma|make|mc|mcrypt|mdecrypt|medusa|mii-diag|mii-tool|minicom|mktemp|_mock|modinfo|modprobe|mozilla-firefox|munin-node-configure|munin-run|mussh|mypy|mysql|mysqladmin|ncal|newlist|newusers|nproc|oggdec|optipng|passwd|patch|pbzip2|pdftotext|pdlzip|perltidy|pgrep|phing|pidof|pigz|pinfo|ping|ping6|pkg-config|pkill|plzip|pmake|pm-hibernate|pm-suspend|pm-suspend-hybrid|pngfix|postsuper|ppc-koji|prelink|printenv|protoc|psql|pv|pwck|pwd|pwdx|pwgen|pycodestyle|pydocstyle|pyflakes|py.test|pytest|py.test-2|pytest-2|py.test-3|pytest-3|querybts|quota|quotacheck|quotaoff|quotaon|rdesktop|rdict|_repomanage|reportbug|repquota|_reptyr|rfcomm|ri|rmmod|rpm|rpmbuild|rpmbuild-md5|_rtcwake|s390-koji|screen|scrub|sdptool|setquota|shellcheck|sitecopy|slapt-get|slapt-src|smartctl|smbcacls|smbclient|smbcquotas|smbget|smbpasswd|smbtar|smbtree|snownews|sparc-koji|ss|ssh-add|ssh-keygen|star|strings|_su|sudo|sudoedit|sysbench|sysctl|tar|timeout|tox|tracepath|tracepath6|tshark|tsig-keygen|unshunt|update-alternatives|useradd|userdel|usermod|valgrind|vigr|vipw|vmstat|watch|wget|wol|wvdial|xmllint|xmms|xrdb|xsltproc|xvfb-run|xzdec|_yum|zopfli)
   #  tar|star|sudo|sudoedit|id|gzip) 
-      [[ $opts = -* ]] && _maphelp command $cmd --help
+      [[ $opts = -* ]] && _maphelp command "$cmd" --help
     ;;
     pxz|pylint|pylint-[2-3]|vpnc|xz)
-      [[ $opts = -* ]] && _maphelp command $cmd --long-help
+      [[ $opts = -* ]] && _maphelp command "$cmd" --long-help
     ;;
     animate|compare|composite|conjure|convert|display|genisoimage|identify|import|java|javac|javadoc|javaws|mkisofs|mogrify|montage|openssl|opera|qemu|qemu-kvm|qemu-system-i386|qemu-system-x86_64|sqlite3|stream|wsimport|xgamma|xmodmap)
-      [[ $opts = -* ]] && _maphelp command $cmd -help
+      [[ $opts = -* ]] && _maphelp command "$cmd" -help
     ;;
     python|python[2-3]|python[2-3].[0-9])
-      [[ $opts = -* ]] && _maphelp - <<<"$(command $cmd -h 2>&1 | sed -e 's/^/ /' -e 's/://')"
+      [[ $opts = -* ]] && _maphelp - <<<"$(command "$cmd" -h 2>&1 | sed -e 's/^/ /' -e 's/://')"
     ;;
     alpine|apropos|arping|cvsps|fusermount|iftop|_ionice|ipmitool|lz4|lz4c|man|micropython|monodevelop|nc|ncftp|ngrep|perl|perldoc|pine|pypy|pypy3|python|python2|python2.7|python3|python3.3|python3.4|python3.5|python3.6|python3.7|python3.8|python3.9|sbopkg|smbcacls|smbclient|smbcquotas|smbget|smbpasswd|smbtar|smbtree|strace|whatis|xxd|zopflipng)
-      [[ $opts = -* ]] && _maphelp command $cmd -h
+      [[ $opts = -* ]] && _maphelp command "$cmd" -h
     ;;
     ssh|sftp|scp)
       type man >/dev/null 2>&1 || return
-      [[ $opts = -* ]] && _maphelp - <<<"$(man $cmd |col -b)"
+      [[ $opts = -* ]] && _maphelp - <<<"$(man "$cmd" |col -b)"
     ;;
     git)
       (( ${#_git_help[@]} == 0 )) && _git_cmd_help
       [[ $opts = -* ]] && {
         local git_cmd i
         git_cmd="${COMP_WORDS[1]}"
-        [ "${_git_help[$git_cmd]}" ] && _maphelp $cmd "$git_cmd" -h
+        [ "${_git_help[$git_cmd]}" ] && _maphelp "$cmd" "$git_cmd" -h
         return
       }	
       [ "$COMP_CWORD" = 1 ] && {
@@ -80,7 +80,7 @@ comphelp() {
     ;;
     find|gfind)
         type man >/dev/null 2>&1 || return
-        _maphelp - <<<"$(man $cmd |col -b |awk '/-anewer and/{next}/^     +-/{print $0;getline;print $0}/EXIT/{exit}' 2>&1)"
+        _maphelp - <<<"$(man "$cmd" |col -b |awk '/-anewer and/{next}/^     +-/{print $0;getline;print $0}/EXIT/{exit}' 2>&1)"
     ;;
     puppet)
       (( ${#_puppet_help[@]} == 0 )) && _puppet_cmd_help
@@ -88,7 +88,7 @@ comphelp() {
         local _cmd i
         _cmd="${COMP_WORDS[1]}"
         [ "${_puppet_help[$_cmd]}" ] && \
-            _maphelp - <<<"$($cmd "$_cmd" -h 2>&1|sed -e 's/[*:]//g')"
+            _maphelp - <<<"$("$cmd" "$_cmd" -h 2>&1|sed -e 's/[*:]//g')"
         return
       }
       [ "$COMP_CWORD" = 1 ] && {
