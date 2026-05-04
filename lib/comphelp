@@ -7,8 +7,8 @@ type gawk &>/dev/null && declare -A _git_help _puppet_help 2>/dev/null || {
 _git_cmd_help() {
   local k v
   while read k v;do
-    _git_help["$k"]="$v"
-  done <<<$(git help -a |grep '^   ')
+    [ "$k" ] && _git_help["$k"]="$v"
+  done <<<$(git help -a |grep '^   [[:alnum:]]')
 }
 
 _puppet_cmd_help() {
@@ -64,9 +64,9 @@ comphelp() {
       [[ $opts = -* ]] && _maphelp - <<<"$(man "$cmd" |col -b)"
     ;;
     git)
+      local git_cmd i git_help
       (( ${#_git_help[@]} == 0 )) && _git_cmd_help
       [[ $opts = -* ]] && {
-        local git_cmd i
         git_cmd="${COMP_WORDS[1]}"
         [ "${_git_help[$git_cmd]}" ] && _maphelp "$cmd" "$git_cmd" -h
         return
@@ -74,7 +74,8 @@ comphelp() {
       [ "$COMP_CWORD" = 1 ] && {
         for ((i=0;i<${#COMPREPLY[@]};i++));do
           git_cmd="${COMPREPLY[$i]}"
-          COMPREPLY[$i]="$git_cmd"$'\t'"${_git_help[${git_cmd% }]}"
+          git_help="${_git_help[${git_cmd% }]}"
+          [ "$git_help" ] && COMPREPLY[$i]="$git_cmd"$'\t'"$git_help"
         done
       }
     ;;
