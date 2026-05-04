@@ -64,7 +64,7 @@ _complete-ng_key() {
 }
 
 _complete-ng() {
-  local cmd="${COMP_WORDS[O]}" fn IFS="$IFS" opt="-f" word="" selopt='-o filenames' longword sortcmd=(sort -u) COMP_SORT=1
+  local cmd="${COMP_WORDS[O]}" fn IFS="$IFS" opt="-f" word="" selopt='-o filenames' longword sortcmd=(sort -u) COMP_SORT=1 row col
   [ "${#COMP_WORDS[@]}" -gt 0 ] && word="${COMP_WORDS[$COMP_CWORD]}"
   fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
   [ "$fn" ] || { cmd="${cmd##*/}"; fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}"); }

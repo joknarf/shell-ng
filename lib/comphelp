@@ -5,23 +5,23 @@ type gawk &>/dev/null && declare -A _git_help _puppet_help 2>/dev/null || {
 }
 
 _git_cmd_help() {
-  typeset k v
+  local k v
   while read k v;do
     _git_help["$k"]="$v"
   done <<<$(git help -a |grep '^   ')
 }
 
 _puppet_cmd_help() {
-  typeset k v
+  local k v
   while read k v;do
     _puppet_help["$k"]="$v"
   done <<<$(puppet help |grep '    [[:alnum:]]')
 }
 
 type mapfile >/dev/null 2>&1|| mapfile() {
-    typeset o="$IFS"
+    local IFS=$'\n'
     shift # -t
-    IFS=$'\n'; set -f; eval $1'=( $(cat -) )'; set +f; IFS="$o"
+    set -f; eval $1'=( $(cat -) )'; set +f
 }
 _maphelp()
 {
@@ -34,8 +34,8 @@ _maphelp()
 }
 
 comphelp() {
-  typeset cmd="${COMP_WORDS[0]}"
-  typeset opts="${COMPREPLY[*]}"
+  local cmd="${COMP_WORDS[0]}"
+  local opts="${COMPREPLY[*]}"
   case "$fn" in
     _longopt|_comp_complete_longopt)
       _maphelp $cmd --help
@@ -66,7 +66,7 @@ comphelp() {
     git)
       (( ${#_git_help[@]} == 0 )) && _git_cmd_help
       [[ $opts = -* ]] && {
-        typeset git_cmd i
+        local git_cmd i
         git_cmd="${COMP_WORDS[1]}"
         [ "${_git_help[$git_cmd]}" ] && _maphelp $cmd "$git_cmd" -h
         return
@@ -85,7 +85,7 @@ comphelp() {
     puppet)
       (( ${#_puppet_help[@]} == 0 )) && _puppet_cmd_help
       [[ $opts = -* ]] && {
-        typeset _cmd i
+        local _cmd i
         _cmd="${COMP_WORDS[1]}"
         [ "${_puppet_help[$_cmd]}" ] && \
             _maphelp - <<<"$($cmd "$_cmd" -h 2>&1|sed -e 's/[*:]//g')"
