@@ -1,9 +1,8 @@
-declare -A _git_help _puppet_help 2>/dev/null || {
+type gawk &>/dev/null && declare -A _git_help _puppet_help 2>/dev/null || {
   # not supported
   comphelp() { :; }
   return
 }
-type gawk >/dev/null 2>&1 && _comp_awk=gawk || _comp_awk=awk
 
 _git_cmd_help() {
   typeset k v
@@ -104,7 +103,7 @@ comphelp() {
 
 function _parse_help_desc()
 {
-  $_comp_awk '
+    gawk '
 function trim(s) {
     gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
     return s
