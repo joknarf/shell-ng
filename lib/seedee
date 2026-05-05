@@ -4,14 +4,13 @@
 #   dir history / subdir explore
 #   . ./seedee
 #   
-[ "$KSH_VERSION" ] && ! type selector >/dev/null 2>&1 && . "$(\cd "${.sh.file%/*}";pwd)/selector"
 
 unalias cd 2>/dev/null
 type typeset >/dev/null 2>/dev/null || alias typeset=local # ash
 touch ${CDHISTFILE:=~/.cd_history}
-: ${CDPOWERLINE:=y}
-: ${CDNBDIRS:=10}
-: ${CDCOMPLETE:=n}
+: "${CDPOWERLINE:=y}"
+: "${CDNBDIRS:=10}"
+: "${CDCOMPLETE:=n}"
 [[ "$(uname -r)" = *-ish ]] && {
   : ${CDHISTBIND:='\e:'}
   : ${CDLBIND:='\e*'}
@@ -87,7 +86,7 @@ function _cdbrowse {
   : ${dir:=.}
   $(\cd "$dir" >/dev/null 2>&1) || return
   [ "$depth" = 4 ] && printf "Searching directories..." >&2
-  _items="$(find -L "$dir" -xdev -mindepth 1 -maxdepth $depth '(' -name '.?*' -prune -o -name '__pycache__' -prune ')' -o -type d -print 2>/dev/null|\
+  _items="$(find -L "$dir" -xdev -mindepth 1 -maxdepth "$depth" '(' -name '.?*' -prune -o -name '__pycache__' -prune ')' -o -type d -print 2>/dev/null|\
     sed -e s"#^$HOME/#\~/#"|sort)"
   _items_ori="$_items"
 }
@@ -150,8 +149,8 @@ function _cd_keys
 # cdhist -a : whole history
 # cdhist [-a] <pattern> [<pat>...]: display dirs matching pattern/cd to dir if unique found
 function cdhist {
-  typeset gr=. nb=${CDNBDIRS:-10} cdhf=${CDHISTFILE:-~/.cd_history} first='' awk=awk dir
-  [ ! -s "$cdhf" ] && printf "%s" "$CDINITDIRS" >$cdhf
+  typeset gr=. nb="${CDNBDIRS:-10}" cdhf=${CDHISTFILE:-~/.cd_history} first='' awk=awk dir
+  [ ! -s "$cdhf" ] && printf "%s" "$CDINITDIRS" >"$cdhf"
   [ "$_cdpr" = 1 ] && [ "$BASH" ] && _tput el >&2
   [ "$1" = -a ] && nb=-1 && shift
   [ "$1" = - ] && first="exit" && shift
@@ -160,7 +159,7 @@ function cdhist {
   [ "$1" = ++ ] && shift && { cdsub 4 . "$@"; return; }
   [ -x /bin/nawk ] && awk=nawk
   [ "$1" ] && gr=$($awk 'BEGIN{OFS=".*";for(i=1;i<ARGC;i++) $i=ARGV[i];print}' "$@")
-  cdselect "$nb" "$($awk '$0 == pwd {next} $0 ~ gr {sub("^"hom"(/|$)","~/");print;'$first'}' gr="$gr" pwd="$PWD" hom=$HOME $cdhf)"
+  cdselect "$nb" "$($awk '$0 == pwd {next} $0 ~ gr {sub("^"hom"(/|$)","~/");print;'$first'}' gr="$gr" pwd="$PWD" hom=$HOME "$cdhf")"
 }
 [ "$ZSH_VERSION" ] && {
   function _zle_do {
@@ -221,7 +220,7 @@ function cdhist {
 # cd autocompletion
 # expand arg without alias expansion
 _cdhist_cd() {
-  typeset row col var word="$2" dir=$(eval printf %s "$2") IFS=$' \t\n' ts='~/' hs="$HOME/" longword
+  typeset row col word="$2" dir=$(eval printf %s "$2") IFS=$' \t\n' ts='~/' hs="$HOME/" longword
   # use bash_completion _cd or limited cdcomplete
   dir="${dir/#$hs/$ts}"
   COMP_WORDS=( cd "$dir" )
@@ -270,7 +269,7 @@ _cdhist_cd() {
   # [ ! "$COMP_TYPE" = 63 ]   && return #tab-tab but... tab: COMP_TYPE=9
   printf "\r" >&2
   IFS=$'\n'
-  COMPREPLY=( "$(_cdpr=2 cdselect $CDNBDIRS "$(printf "%s\n" "${COMPREPLY[@]}"|sort -u)" "$longword")" )
+  COMPREPLY=( "$(_cdpr=2 cdselect "$CDNBDIRS" "$(printf "%s\n" "${COMPREPLY[@]}"|sort -u)" "$longword")" )
   IFS=$' \t\n'
   _tput cuf $((col-1)) >&2
   [ "${COMPREPLY[0]}" ] && {
@@ -304,7 +303,7 @@ function cdsub {
   [ "$1" ] && gr=$($awk 'BEGIN{OFS=".*";for(i=1;i<ARGC;i++) $i=ARGV[i];print}' "$@")
   gr="${gr%/}"
   printf "%s" " Searching directories..." >&2
-  cdselect "$CDNBDIRS" "$(find -L "$orig" -xdev -mindepth 1 -maxdepth $depth '(' -name '.?*' -prune -o -name '__pycache__' -prune ')' -o -type d -print |\
+  cdselect "$CDNBDIRS" "$(find -L "$orig" -xdev -mindepth 1 -maxdepth "$depth" '(' -name '.?*' -prune -o -name '__pycache__' -prune ')' -o -type d -print |\
     sort -u |grep -- "$gr" 2>/dev/null;_tput cub 25 >&2;_tput el >&2)"
 }
 
@@ -316,7 +315,7 @@ function locatedir {
   [ -x /bin/nawk ] && awk=nawk
   gr=$($awk 'BEGIN{OFS=".*";for(i=1;i<ARGC;i++) $i=ARGV[i];print}' "$@")
   shift $(($# - 1))
-  (locate -r "$gr" 2>/dev/null|| locate "$gr") |awk -F'/' '/\/\.|^\/snap/{next}$NF ~ gr' gr=${1##*/} |while read file
+  (locate -r "$gr" 2>/dev/null|| locate "$gr") |awk -F'/' '/\/\.|^\/snap/{next}$NF ~ gr' gr="${1##*/}" |while read file
   do
     [ -d "$file" ] && printf "%s\n" "$file"
   done
