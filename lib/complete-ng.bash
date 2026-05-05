@@ -7,6 +7,11 @@ declare -F selector >/dev/null 2>&1 || . "$(\cd "${BASH_SOURCE%/*}";pwd)/selecto
 #unalias complete 2>/dev/null
 #alias complete=complete-ng
 
+_arrayread() {
+    local IFS=$'\n'
+    set -f; eval "$1"'=($(cat))'; set +f
+}
+
 _complete-ng_navigate() {
   local dir=$1 IFS="$IFS"
   [[ "$dir" = \~/* ]] && dir="$HOME/"${dir#\~/}
@@ -15,9 +20,7 @@ _complete-ng_navigate() {
   [[ $dir = $PWD* ]] && dir="${dir#$PWD}" && dir="${dir#/}"
   [ "$dir" ] && dir="${dir%/}/"
   [[ "$dir" = $HOME/* ]] && dir="~/${dir#$HOME/}"
-  set -f
-  IFS=$'\n' _items=( "$(compgen -f -- "$dir"|sort -u)" ) IFS=$' \t\n'
-  set +f
+  _items="$(compgen -f -- "$dir"|sort -u)"
   [ "$_items" ] || _items="${dir%/}/"
   _items_ori="$_items"
   return 0
@@ -81,23 +84,19 @@ _complete-ng() {
     type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
         compgen -f /non-existing-dir/ >/dev/null
     [ "$COMP_CWORD" -le 0 ] && [ "$word" ] && opt="-c"
-    set -f
     : "${word:=./}"
-    IFS=$'\n' COMPREPLY=( $(compgen $opt -- "$word") ) IFS=$' \t\n'
-    set +f
+    _arrayread COMPREPLY <<<"$(compgen $opt -- "$word")"
   }
   [ "${#COMPREPLY[@]}" = 1 ] && COMPREPLY=("${COMPREPLY%%$'\t'*}") && return
   [ "$COMP_SORT" ] || sortcmd=(cat)
   IFS='[;' read -rsd R -p $'\e[6n' _ row col
   printf "\n" >&2
-  [ "${#COMPREPLY[@]}" = 0 ] && {
+  [ ! "$COMPREPLY" ] && {
     [ "$fn" ] && {
-      type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \                                                                                         compgen -f /non-existing-dir/ >/dev/null
-      set -f
-      IFS=$'\n' COMPREPLY=( $(compgen -f -- "$word") ) IFS=$' \t\n'
-      set +f
+      type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \                                       compgen -f /non-existing-dir/ >/dev/null
+      _arrayread COMPREPLY <<<"$(compgen -f -- "$word")"
     }
-    [ "${#COMPREPLY[@]}" = 0 ] && {
+    [ ! "$COMPREPLY" ] && {
       printf 'Not found !\r' >&2
       sleep "0.2"
       _tput "el" >&2
@@ -111,9 +110,7 @@ _complete-ng() {
   longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
   [ "$longword" ] || longword="$word"
   comphelp
-  set -f
-  COMPREPLY=( "$(SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key "${selopt[@]}" -i "$(printf "%s\n" "${COMPREPLY[@]}"|"${sortcmd[@]}")" -F "$longword")" )
-  set +f
+  SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key "${selopt[@]}" -i "$(printf "%s\n" "${COMPREPLY[@]}"|"${sortcmd[@]}")" -F "$longword" >/dev/null && COMPREPLY=("$selected") || COMPREPLY=()
   #kill -WINCH $$ # force redraw prompt
   _tput "cuu1" >&2
   _tput "cuf" "$((col-1))" >&2
