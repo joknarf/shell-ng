@@ -21,7 +21,7 @@ _puppet_cmd_help() {
 _maphelp()
 {
   declare -A help
-  local opt desc
+  local opt desc k
   while read opt desc;do
     [ "$opt" ] || continue
     help["$opt"]="$desc"
@@ -34,7 +34,8 @@ _maphelp()
   _arrayread COMPREPLY <<<"$(
     for opt in "${COMPREPLY[@]}";do
         [ "$opt" ] || continue
-        [ "${help[$opt]}" ] && printf '%s\t%s\n' "$opt" "${help[$opt]}" || printf '%s\n' "$opt"
+        k="${opt%%[= ]*}"
+        [ "${help[$k]}" ] && printf '%s\t%s\n' "$opt" "${help[$k]}" || printf '%s\n' "$opt"
     done
   )"
 }
@@ -132,7 +133,7 @@ function split_optarg(s,    m,opt,arg) {
         opt = m[1]; arg = m[2]
     }
     # --name=ARG
-    else if (match(s, /^(--[^[:space:]=]+)(=.*)$/, m)) {
+    else if (match(s, /^(--[^[:space:]=\[]+)([=\[].*)$/, m)) {
         opt = m[1]; arg = m[2]
     }
     # --name ARG
