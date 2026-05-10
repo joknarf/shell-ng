@@ -64,12 +64,16 @@ _complete-ng_key() {
       _tput civis
       return 0
     ;;
+    '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
+      echo $item >/tmp/i
+      [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "${item%%$'\t'*}"
+    ;;
   esac
   return 2
 }
 
 _complete-ng() {
-  local cmd="${COMP_WORDS[O]}" fn IFS="$IFS" opt="-f" word="" selopt=(-o filenames) longword sortcmd=(sort -u) COMP_SORT=1 row col
+  local cmd="${COMP_WORDS[O]}" fn IFS="$IFS" opt="-f" word="" selopt=(-o filenames) longword sortcmd=(sort -u) COMP_SORT=1 COMP_DELFUNC='' row col
   [ "${#COMP_WORDS[@]}" -gt 0 ] && word="${COMP_WORDS[$COMP_CWORD]}"
   fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
   [ "$fn" ] || { cmd="${cmd##*/}"; fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}"); }

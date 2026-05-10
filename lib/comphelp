@@ -18,18 +18,24 @@ _puppet_cmd_help() {
   done <<<"$(puppet help |grep '    [[:alnum:]]')"
 }
 
-type mapfile >/dev/null 2>&1|| mapfile() {
-    local IFS=$'\n'
-    shift # -t
-    set -f; eval "$1"'=( $(cat -) )'; set +f
-}
 _maphelp()
 {
-  mapfile -t COMPREPLY <<<"$(
+  declare -A help
+  local opt desc
+  while read opt desc;do
+    [ "$opt" ] || continue
+    help["$opt"]="$desc"
+  done <<<"$(
     case "$1" in
       -) cat - ;;
-      *) TERM=dumb LC_ALL=C "$@" 2>&1 ;;
-    esac| _parse_help_desc opts="$opts"
+      *) TERM=dumb LC_ALL=C "$@" 2>&1;;
+    esac |_parse_help_desc
+  )"
+  _arrayread COMPREPLY <<<"$(
+    for opt in "${COMPREPLY[@]}";do
+        [ "$opt" ] || continue
+        [ "${help[$opt]}" ] && printf '%s\t%s\n' "$opt" "${help[$opt]}" || printf '%s\n' "$opt"
+    done
   )"
 }
 
@@ -59,9 +65,11 @@ comphelp() {
     alpine|apropos|arping|cvsps|fusermount|iftop|_ionice|ipmitool|lz4|lz4c|man|micropython|monodevelop|nc|ncftp|ngrep|perl|perldoc|pine|pypy|pypy3|sbopkg|smbcacls|smbclient|smbcquotas|smbget|smbpasswd|smbtar|smbtree|strace|whatis|xxd|zopflipng)
       [[ $opts = -* ]] && _maphelp command "$cmd" -h
     ;;
+    flyto|fto|fssh)
+      _maphelp - <<<"$(man "ssh" 2>/dev/null|col -b)"
+    ;;
     ssh|sftp|scp)
-      type man >/dev/null 2>&1 || return
-      [[ $opts = -* ]] && _maphelp - <<<"$(man "$cmd" |col -b)"
+      [[ $opts = -* ]] && _maphelp - <<<"$(man "$cmd" 2>/dev/null|col -b)"
     ;;
     git)
       local git_cmd i git_help
