@@ -22,21 +22,11 @@ _maphelp()
 {
   declare -A help
   local opt desc k
-  while read opt desc;do
-    [ "$opt" ] || continue
-    help["$opt"]="$desc"
-  done <<<"$(
-    case "$1" in
-      -) cat - ;;
-      *) TERM=dumb LC_ALL=C "$@" 2>&1;;
-    esac |_parse_help_desc
-  )"
   _arrayread COMPREPLY <<<"$(
-    for opt in "${COMPREPLY[@]}";do
-        [ "$opt" ] || continue
-        k="${opt%%[= ]*}"
-        [ "${help[$k]}" ] && printf '%s\t%s\n' "$opt" "${help[$k]}" || printf '%s\n' "$opt"
-    done
+    case "$1" in
+        -) cat - ;;
+        *) TERM=dumb LC_ALL=C "$@" 2>&1;;
+    esac |_parse_help_desc
   )"
 }
 
@@ -169,13 +159,8 @@ function print_pair(opt,arg,desc, txt) {
         else
             txt = arg
     }
-    if (a_done[opt]) return;
-    if (! opts)
-      print opt "\t" txt
-    if (opt in a_opts && txt) {
-      print a_opts[opt] "\t" txt
-      a_done[opt] = 1
-    }
+    if (!(opt in help) && txt)
+      help[opt] = txt
 }
 
 function emit(opt,desc, a,b) {
@@ -212,10 +197,13 @@ BEGIN {
 }
 
 NR==1 {
-    split(opts, t)
-    for(i in t) a_opts[gensub("=$","",1,t[i])] = t[i]
+    split(opts, t_opts, "\n")
+    for(i in t_opts) {
+      opt = gensub("[= ]$","",1,t_opts[i])
+      a_opts[opt] = t_opts[i]
+      t_opts[i] = opt
+    }
 }
-
 
 /^[[:space:]]+-/ {
     flush()
@@ -246,7 +234,14 @@ pending && /^[[:space:]]+/ {
 
 END {
     flush()
-    for (i in a_opts) if (!(i in a_done)) print a_opts[i]
+
+    for (i=1;i<=length(t_opts);i++) {
+      opt=t_opts[i]
+      if (opt in help)
+        print a_opts[opt] "\t" help[opt]
+      else
+        print a_opts[opt]
+    }
 }
-' "$@"
+' opts="$(printf '%s\n' "${COMPREPLY[@]}")"
 }
