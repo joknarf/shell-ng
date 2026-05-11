@@ -144,7 +144,6 @@ _complete_ng() {
         __value="$(_complete_ng_selector "$__code" <&p)"
         __code="$?"
         kill -- -"$coproc_pid" 2>/dev/null && wait "$coproc_pid"
-
         printf "__code='%s'; __value='%s'\\n" "${__code//'/'\''}" "${__value//'/'\''}"
         printf '%s\n' ": $_com_sentinel1$_com_sentinel2"
     ) | sed -un "/$_com_sentinel1$_com_sentinel2/q; p"
@@ -161,12 +160,13 @@ _complete_ng() {
                     eval "opts=( ${__compadd_args[$index]} )"
                     for ((i = 1; i <= $#opts; i++)); do
                         [[ "${opts[$i]}" = (-s|-S|-J|-F|-M) ]] && o+=( "${opts[$i]}" "${opts[$i+1]}" ) && continue
-                        [[ "${opts[$i]}" = (-f|-q|-Qf|-l|-U) ]] && o+=( "${opts[$i]}" ) && continue
+                        [[ "${opts[$i]}" = (-f|-q|-Q|-l|-U|-Ql) ]] && o+=( "${opts[$i]}" ) && continue
                         [[ "${opts[$i]}" = (-W) ]] && o+=( "-S" "") && continue
                     done
-                    value=( "${value[2]}" )
+                    #value=( "${value[2]}" )
+                    value=( "${(Q)value[2]}" )
                     SUFFIX= ISUFFIX= compadd "${o[@]}" -a value
-                    #value=( "${(Q)value[2]}" )
+                    # value=( "${(Q)value[2]}" )
                     # eval "$opts -a value"
                 fi
             done <<<"$__value"
@@ -248,12 +248,8 @@ _complete_ng_selector() {
     fi
     [ ! "$selected" ] && [ "$longword" != "$PREFIX" ] && code="0" && selected="$longword"
     s="${selected}"
-    #[[ "$PREFIX" != ..* ]] && s="${selected#${PREFIX%/*}/}"
-    # s="${s%/}"
-    #s="$(printf '%q' "$(printf '%q' "$s")")"
     s="$(printf '%q' "${(Q)s}")"
-    # s="${s/#\\\\~\//~/}"
-    s="${s/#\\~\//~/}"	
+    s="${s/#\\~\//~/}"
     selected="$(printf '%q' "${(Q)selected}")"
     [ "$selected" ] && printf '%s\n' "$selected$_COMPLETE_NG_SEP$s${_COMPLETE_NG_SEP}1$_COMPLETE_NG_SEP$selected$_COMPLETE_NG_SPACE_SEP"
     return "$code"
@@ -308,6 +304,10 @@ _complete-ng_key() {
       _tput civis
       return 0
     ;;
+    '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
+      [[ $_COMPLETE_NG_CONTEXT = *:_fly,ssh* ]] && COMP_DELFUNC=_fly_hist_del
+      [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "${item%%$'\t'*}"
+    ;;
   esac
   return 2
 }
@@ -319,6 +319,7 @@ _complete_ng_zstyle() {
 }
 
 _complete_ng_compadd() {
+    [ -v "COMPADD_ARGS" ] && set -- "${COMPADD_ARGS[@]}" "$@"
     local __flags=()
     local __OAD=()
     local __disp __hits __ipre __apre __hpre __hsuf __asuf __isuf __opts __optskv

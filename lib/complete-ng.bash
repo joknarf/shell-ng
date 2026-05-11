@@ -65,7 +65,6 @@ _complete-ng_key() {
       return 0
     ;;
     '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
-      echo $item >/tmp/i
       [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "${item%%$'\t'*}"
     ;;
   esac

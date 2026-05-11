@@ -57,10 +57,10 @@ comphelp() {
       [[ $opts = -* ]] && _maphelp command "$cmd" -h
     ;;
     flyto|fto|fssh)
-      _maphelp - <<<"$(man "ssh" 2>/dev/null|col -b)"
+      _maphelp - <<<"$((man "ssh" |col -b) 2>/dev/null)"
     ;;
     ssh|sftp|scp)
-      [[ $opts = -* ]] && _maphelp - <<<"$(man "$cmd" 2>/dev/null|col -b)"
+      [[ $opts = -* ]] && _maphelp - <<<"$((man "$cmd" |col -b) 2>/dev/null)"
     ;;
     git)
       local git_cmd i git_help
@@ -243,5 +243,5 @@ END {
         print a_opts[opt]
     }
 }
-' opts="$(printf '%s\n' "${COMPREPLY[@]}")"
+' opts="$(printf '%s\n' "${COMPREPLY[@]}")" 2>/dev/null
 }
