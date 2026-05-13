@@ -230,7 +230,7 @@ function ps1_pwline {
             }
         }
         printf("%s\n", colors["reset_all"])
-    }' "$@"
+    }' "$@" 2>/dev/null
 }
 
 
