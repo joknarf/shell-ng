@@ -243,5 +243,5 @@ END {
         print a_opts[opt]
     }
 }
-' opts="$(printf '%s\n' "${COMPREPLY[@]}")" 2>/dev/null
+' opts="$(printf '%s\n' "${COMPREPLY[@]//\\/\\\\}")" 2>/dev/null
 }
