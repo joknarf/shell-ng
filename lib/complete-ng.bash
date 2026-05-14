@@ -96,7 +96,8 @@ _complete-ng() {
   printf "\n" >&2
   [ ! "$COMPREPLY" ] && {
     [ "$fn" ] && {
-      type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \                                       compgen -f /non-existing-dir/ >/dev/null
+      type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
+          compgen -f /non-existing-dir/ >/dev/null
       _arrayread COMPREPLY <<<"$(compgen -f -- "$word")"
     }
     [ ! "$COMPREPLY" ] && {
