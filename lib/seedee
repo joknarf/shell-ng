@@ -304,7 +304,7 @@ function cdsub {
   gr="${gr%/}"
   printf "%s" " Searching directories..." >&2
   cdselect "$CDNBDIRS" "$(find -L "$orig" -xdev -mindepth 1 -maxdepth "$depth" '(' -name '.?*' -prune -o -name '__pycache__' -prune ')' -o -type d -print |\
-    sort -u |grep -- "$gr" 2>/dev/null;_tput cub 25 >&2;_tput el >&2)"
+    sort -u |grep -- "$gr" 2>/dev/null;printf '\e[25D\e[K' >&2)" #_tput breaks old ksh
 }
 
 # use locate to get directories
@@ -483,3 +483,4 @@ alias cd++='cdsub 4 .'
 alias cdl=cdlocate
 _cdbind
 [ "$CDCOMPLETE" = y ] && cdcomplete
+:
