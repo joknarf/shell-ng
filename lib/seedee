@@ -32,7 +32,7 @@ function cdpush {
   typeset cdhf=${CDHISTFILE:-~/.cd_history} dir
   case "$1" in 
     --) shift; cdhist "$@"; return $?;;
-    -)  [ "$2" ] && { cdhist "$@"; return $?; };;
+    -)  cdhist "$@"; return $?;;
     +)  shift; cdsub 1 . "$@"; return $?;;
     ++) shift; cdsub 4 . "$@"; return $?;;
   esac
