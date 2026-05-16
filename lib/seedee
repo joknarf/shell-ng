@@ -78,7 +78,7 @@ function cdselect
   [ "$dir" ] && cdpush "$dir"
 }
 
-function _cdbrowse {
+_cdbrowse() {
   typeset dir="$1" depth=${2:-1}
 
   [[ $dir = \~* ]] && dir="$HOME"${dir#\~}
@@ -92,7 +92,7 @@ function _cdbrowse {
 }
 
 # selector custom keys
-function _cd_keys
+_cd_keys()
 {
   typeset k="$1" dir="${_aitems[$_nsel]}"
 
@@ -121,7 +121,6 @@ function _cd_keys
       _cdbrowse "$dir"
       _force_nsel=$_last_nsel
       unset _last_nsel
-      unset _last_filter
       return 0
     ;;
     '[1;2C') # shift right
