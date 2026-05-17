@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# dfb - df with colored usage bars
+#
+# df command replacement with colored usage bars/fstype
+# default filters fstypes to show common local and network filesystems
+# on BSD/MacOS need gdf (brew/pkg install coreutils)
+# can override begin/end symbols with DFBAR_BEGIN/DFBAR_END env vars
+# (nerd fonts recommended for symbols)
+# usage: dfb [-a] [df options]
+#
+type gdf >/dev/null 2>&1 && df=gdf || df=df
+[ -t 1 ] || exec $df "$@"
+shopt -s extglob
+[[ $1 = @(--help|--version) ]] && exec $df "$@"
+# RGB custom colors : free used warn alert
+: ${DFBAR_COLORS:="36;114;67 30;90;180 175;138;27 160;0;0"}
+: ${DFBAR_BEGIN:=''}
+: ${DFBAR_END:=''}
+
+dfbar() {
+  typeset dfopt=( -T -x fuse.snapfuse -x overlay -x rootfs -x devtmpfs -x efivarfs ) all df="${df:-df}"
+  [[ " $*" = *\ -*a ]] && dfopt=( -T ) && all=1;
+  set -o pipefail
+  LANG=C $df -P "${dfopt[@]}" "$@" | awk -v sym1="$DFBAR_BEGIN" -v sym2="$DFBAR_END" -v all=$all -v col="$DFBAR_COLORS" '
+  BEGIN {
+    barlen=10
+    esc="\033["
+    reset=esc "0m"     ; fg_white=esc "97m"
+    if (col) {
+      split(col, cols)
+      green_bg=esc "48;2;" cols[1] "m"  ; fg[green_bg]=esc "38;2;" cols[1] "m"
+      blue_bg=esc "48;2;" cols[2] "m"   ; fg[blue_bg]=esc "38;2;" cols[2] "m"
+      yellow_bg=esc "48;2;" cols[3] "m" ; fg[yellow_bg]=esc "38;2;" cols[3] "m"
+      red_bg=esc "48;2;" cols[4] "m"    ; fg[red_bg]=esc "38;2;" cols[4] "m"
+      gray_bg=esc "48;2;32;64;64m"
+    } else {
+      green_bg=esc "42m" ; blue_bg=esc "44m"
+      yellow_bg=esc "43m"; red_bg=esc "41m"
+      fg[green_bg]=esc "32m"  ; fg[blue_bg]=esc "34m"
+      fg[yellow_bg]=esc "33m" ; fg[red_bg]=esc "31m"    
+      gray_bg=esc "100m" 
+    }
+    lbg[0]=esc "48;5;234m"
+    lbg[1]=esc "48;5;232m"
+    typc["xfs"]=esc "94m"
+    typc["ext4"]=esc "92m"
+    typc["tmpfs"]=esc "36m"
+    typc["9p"]=esc "93m"
+    typc["nfs"]=esc "91m"
+    typc["nfs4"]=esc "91m"
+    typc["apfs"]=esc "94m"
+
+    printf esc "?7l" # disable line wrapping
+    getline
+    # initialize widths with header lengths
+    for(i=1;i<7;i++) {
+      h[i]=$i
+      w[i]=length($i)
+    }
+    h[7]=$7 " " $8 # Mounted on
+    w[7]=length(h[7])
+    if(barlen>w[6]) w[6]=barlen
+  }
+  ! all && $2 == "tmpfs" && $NF != "/tmp" { next }
+  $1 !~ /^[0-9]/ { sub(/[.].*:/, ":", $1) } # remove domain from nfs device name
+  {
+    nlines++
+    for(i=1;i<7;i++) {
+      if (length($i)>w[i]) w[i]=length($i)
+      lines[nlines,i]=$i
+    }
+    mnt=$7
+    for(i=8;i<=NF;i++) mnt=mnt " " $i
+    if(length(mnt)>w[7]) w[7]=length(mnt)
+    lines[nlines,7]=mnt
+  }
+  END {
+    if (nlines==0) exit
+    # print header
+    printf "%s%-*s %-*s %*s %*s %*s %-*s   %-*s%s\n", \
+      fg_white gray_bg, w[1],h[1], w[2],h[2], w[3],h[3], w[4],h[4], w[5],h[5], w[6],h[6], w[7],h[7], reset
+
+    for(i=1;i<=nlines;i++){
+      dev=lines[i,1]; type=lines[i,2]; size=lines[i,3]; used=lines[i,4]; avail=lines[i,5]; pct=lines[i,6]; mnt=lines[i,7]
+      sub(/%/,"",pct)
+      if (pct!="-") {
+        pct+=0; if(pct<0) pct=0; if(pct>100) pct=100
+      }
+
+      fill=int(pct*barlen/100 + 0.5)
+      free_len=barlen - fill
+
+      pct_str=sprintf("%3s%%", pct)
+      pct_start=int((barlen-length(pct_str))/2)
+
+      bar=""
+      # decide background for used/free
+      if(pct>=90) bg=red_bg
+      else if(pct>=70) bg=yellow_bg
+      else if(pct>0) bg=blue_bg
+      else bg=green_bg
+      bar=fg[bg] sym1 fg_white bg
+      for(j=0;j<barlen;j++){
+        if (j==fill) {
+          bar=bar green_bg
+          bg=green_bg
+        }
+        # insert pct_str
+        if(j>=pct_start && j<pct_start+length(pct_str)){
+          c=substr(pct_str,j-pct_start+1,1)
+          bar=bar c
+        } else {
+          bar=bar " "
+        }
+      }
+      bar=bar reset fg[bg] sym2 reset
+      printf "%s%-*s %s%-*s%s %*s %*s %*s %s%s %-*s%s\n", \
+        fg_white lbg[i%2], w[1],dev, typc[type], w[2],type, fg_white, w[3],size, w[4],used, w[5],avail, bar, lbg[i%2] fg_white, w[7],mnt, reset
+    }
+    printf esc "?7h" # enable line wrapping
+  }'
+}
+dfbar "$@"

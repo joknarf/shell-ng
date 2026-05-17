@@ -1,0 +1,7 @@
+white	file
+green	date exec
+blue	user folder
+cyan	inum symlink tree
+magenta	socket pipe blockdev chardev .jpg .jpeg .png .gif .bmp .tiff .ico .log .heic .ttf .mp4 .mkv .avi .svg
+yellow	size .doc .js .txt .pem .crt .yaml .yml .html .py .php .sh .c .h .cpp .hpp .awk .conf .ini .xls .xlsx .pdf .epub .csv .md .json .js .css .env .out .cfg .bash_profile .profile .bashrc .kshrc .zshrc .zshenv .inputrc .gitconfig
+red	context missing .tar .gz .tgz .zip .xz .Z .bz2 .rpm .deb .pkg .jar .dmg .rar

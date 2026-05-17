@@ -1,0 +1,5 @@
+. $_path_script/lib/nerdp
+. $_path_script/lib/selector
+. $_path_script/lib/seedee
+alias ls="$_path_script/bin/ls+"
+alias df="$_path_script/bin/dfb"
