@@ -2,7 +2,7 @@
 # Author : Franck Jouvanceau
 
 . "$(\cd "${BASH_SOURCE%/*}";pwd)/comphelp"
-declare -F selector >/dev/null 2>&1 || . "$(\cd "${BASH_SOURCE%/*}";pwd)/selector"
+declare -F selector >/dev/null 2>&1 || . "$(\cd "${BASH_SOURCE%/*}";pwd)/lib/selector"
 
 #unalias complete 2>/dev/null
 #alias complete=complete-ng
@@ -20,7 +20,7 @@ _complete-ng_navigate() {
   [[ $dir = $PWD* ]] && dir="${dir#$PWD}" && dir="${dir#/}"
   [ "$dir" ] && dir="${dir%/}/"
   [[ "$dir" = $HOME/* ]] && dir="~/${dir#$HOME/}"
-  _items="$(compgen -f -- "$dir"|sort -u)"
+  _items="$(compgen "$compgen_opt" -- "$dir"|sort -u)"
   [ "$_items" ] || _items="${dir%/}/"
   _items_ori="$_items"
   return 0
@@ -72,7 +72,7 @@ _complete-ng_key() {
 }
 
 _complete-ng() {
-  local cmd="${COMP_WORDS[O]}" fn IFS="$IFS" opt="-f" word="" selopt=(-o filenames) longword sortcmd=(sort -u) COMP_SORT=1 COMP_DELFUNC='' row col selected
+  local cmd="${COMP_WORDS[O]#\\}" fn IFS="$IFS" opt="-f" word="" selopt=(-o filenames) longword sortcmd=(sort -u) COMP_SORT=1 COMP_DELFUNC='' row col selected compgen_opt='-f'
   [ "${#COMP_WORDS[@]}" -gt 0 ] && word="${COMP_WORDS[$COMP_CWORD]}"
   fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
   [ "$fn" ] || { cmd="${cmd##*/}"; fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}"); }
@@ -82,7 +82,8 @@ _complete-ng() {
         fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
     }
   }
-  [ "$fn" ] && { $fn "$@"; } 
+  [ "$cmd" = 'cd' ] && compgen_opt='-d'
+  [ "$fn" ] && $fn "$@"
   (( ${#COMPREPLY[@]} > 0 )) || {
     type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
         compgen -f /non-existing-dir/ >/dev/null

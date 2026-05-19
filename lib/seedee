@@ -130,7 +130,7 @@ _cd_keys()
       _cdbrowse "$dir" 4
       return 0
     ;;
-    '[1;2D') # shift right
+    '[1;2D') # shift left
       [[ "$dir" = \~* ]] && dir="$HOME"${dir#\~}
       [[ "$dir" = */* ]] && dir="${dir%/*}" || dir="."
       : ${dir:=/}
@@ -226,7 +226,8 @@ _cdhist_cd() {
   COMP_LINE=$(printf '%s ' "${COMP_WORDS[@]}")
   COMP_LINE="${COMP_LINE% }"
   COMP_POINT=${#COMP_LINE}
-  declare -F _cd >/dev/null && _cd "$@" || {
+  declare -F _cd >/dev/null && _cd "$@"
+  [ ! "COMPREPLY" ] && {
     type compopt >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
         compgen -f /non-existing-dir/ >/dev/null
     dir="${dir/#$ts/$hs}"
@@ -246,7 +247,6 @@ _cdhist_cd() {
     COMPREPLY=( "${COMPREPLY[@]/#/$dir}" )
     # COMP_WORDS=( cd "$dir$word" )
   }
-
   [ ${#COMPREPLY[@]} = 1 ] && {
     COMPREPLY[0]="${COMPREPLY[0]/#$ts/$hs}"
     COMPREPLY[0]="${COMPREPLY[0]//\/\//\/}"
