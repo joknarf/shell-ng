@@ -24,8 +24,22 @@ repeat-complete-ng() {
     __query="$1"
 }
 
+_complete_ng_browse() {
+    typeset selected
+    zle -Rc
+    printf '\n' >&2
+    SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "$(setopt NULL_GLOB; print -rl -- .* *|sort -u)" -o filenames >/dev/null
+    _tput cuu1 >&2
+    BUFFER="$selected"
+    zle reset-prompt
+    zle end-of-line
+    #[ "$BUFFER" ] || return 0
+    #zle accept-line
+}
+
 complete_ng() {
     local __repeat=1 __code= __action= __query=
+    [ ! "$BUFFER" ] && { _complete_ng_browse; return; }
     while (( __repeat )); do
         __code=
         __repeat=0
@@ -252,7 +266,7 @@ _complete-ng_navigate() {
   dir=$(\cd "$dir" >/dev/null 2>&1 && pwd) || return 1
   [[ $dir = $PWD* ]] && dir="${dir#$PWD}" && dir="${dir#/}"
   [ "$dir" ] && dir="${dir%/}/"
-  _items="$(setopt NULL_GLOB; print -rl -- $~dir*|sort -u|sed -e "s#^$HOME/#~/#")"
+  _items="$(setopt NULL_GLOB; print -rl -- $~dir* $~dir.*|sort -u|sed -e "s#^$HOME/#~/#")"
   [ "$_items" ] || _items="${dir%/}"
   _items_ori="$_items"
   return 0
