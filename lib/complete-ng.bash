@@ -88,7 +88,6 @@ _complete-ng() {
     type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
         compgen -f /non-existing-dir/ >/dev/null
     [ "$COMP_CWORD" -le 0 ] && [ "$word" ] && opt="-c"
-    : "${word:=./}"
     _arrayread COMPREPLY <<<"$(compgen $opt -- "$word")"
   }
   [ "${#COMPREPLY[@]}" = 1 ] && COMPREPLY=("${COMPREPLY%%$'\t'*}") && return
