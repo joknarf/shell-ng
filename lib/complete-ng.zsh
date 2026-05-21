@@ -25,16 +25,17 @@ repeat-complete-ng() {
 }
 
 _complete_ng_browse() {
-    typeset selected
+    typeset selected tilde
     zle -Rc
     printf '\n' >&2
     SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "$(setopt NULL_GLOB; print -rl -- .* *|sort -u)" -o filenames >/dev/null
     _tput cuu1 >&2
-    BUFFER="$selected"
+    [ "$selected" ] && {
+        [[ $selected = ~* ]] && tilde='~'
+        BUFFER="$tilde${(q)selected#\~}"
+    }
     zle reset-prompt
     zle end-of-line
-    #[ "$BUFFER" ] || return 0
-    #zle accept-line
 }
 
 complete_ng() {
