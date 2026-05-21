@@ -222,7 +222,7 @@ function cdhist {
 _cdhist_cd() {
   typeset row col word="${COMP_WORDS[1]}" dir IFS=$' \t\n' ts='~/' hs="$HOME/" longword
   [ "$COMP_CWORD" = 1 ] || return 1
-  dir="$(eval printf %s "$word")"
+  [[ "$word" = @($|~)[a-zA-Z0-9_/]* ]] && dir="$(eval printf %s "$word")"
   [ "$dir" ] && {
     dir="${dir/#$hs/$ts}"
     COMP_WORDS=( "$1" "$dir" )
