@@ -225,8 +225,8 @@ _cdhist_cd() {
   dir="$(eval printf %s "$word")"
   [ "$dir" ] && {
     dir="${dir/#$hs/$ts}"
-    COMP_WORDS=( cd "$dir" )
-    COMP_LINE=$(printf '%s ' "${COMP_WORDS[@]}")
+    COMP_WORDS=( "$1" "$dir" )
+    COMP_LINE="$(printf '%s ' "${COMP_WORDS[@]}")"
     COMP_LINE="${COMP_LINE% }"
     COMP_POINT=${#COMP_LINE}
   }
