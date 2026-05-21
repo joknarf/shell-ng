@@ -5,6 +5,7 @@
 # Icons for -o filenames, can be overriden using env variables to fit terminal font
 : "${SELECTOR_FOLDER_ICON:=}" # 🖿 🗀 📁 📂 🖿        
 : "${SELECTOR_FILE_ICON:=}" #  🗎            🗋 🖹   📄
+: "${SELECTOR_LINK_ICON:=}"
 : "${SELECTOR_CASEI:=false}"
 : "${SELECTOR_POWERLINE:=y}"
 : "${SELECTOR_COL_PROMPT:=30;90;180}" # blue
@@ -106,8 +107,9 @@ _showmenu()
     icon=''
     [ "$_sel_option" = filenames ] && {
       [[ "$item" = \~/* ]] && fpath="$HOME/"${item#\~/} || fpath="$item"
-      if [ -d "$fpath" ] ;then icon="$SELECTOR_FOLDER_ICON "
-      else [[ -e "$fpath" || -L "$fpath" ]] && icon="$SELECTOR_FILE_ICON ";fi
+      if [ -L "$fpath" ]; then icon="$SELECTOR_LINK_ICON "
+      elif [ -d "$fpath" ] ;then icon="$SELECTOR_FOLDER_ICON "
+      else [ -e "$fpath" ] && icon="$SELECTOR_FILE_ICON ";fi
     }
     if ((_nsel == i)); then
       printf "$disp_item_sel" $w $i $maxw "$icon${item:0:$maxiw}" "${comment:0:$maxcw}"
