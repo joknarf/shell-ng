@@ -64,7 +64,7 @@ function cdselect
     [ "$_cdpr" = 1 ] && [ "$BASH" ] && _tput el >&2
     printf "\n" >&2
   }
-  dir="$(selector -P "$CDPOWERLINE" -m "$nb" -p cd -k _cd_keys -F "$filter" -i "$2")"
+  dir="$(selector -P "$CDPOWERLINE" -m "$nb" -p cd -k _cd_keys -o filenames -F "$filter" -i "$2")"
   [ "$_cdpr" ] && {
     _tput cuu1 >&2
     # bash 3/4 bug repeating prompt/command
