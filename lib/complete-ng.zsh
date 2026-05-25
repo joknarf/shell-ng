@@ -156,6 +156,7 @@ _complete_ng() {
               | "$_complete_ng_awk" -W interactive -F"$_COMPLETE_NG_SEP" '/^$/{exit}; $1!="" && !x[$1]++ { print $0; system("") }' 2>/dev/null
         )
         coproc_pid="$!"
+set >/tmp/set 2>&1
         __value="$(_complete_ng_selector "$__code" <&p)"
         __code="$?"
         kill -- -"$coproc_pid" 2>/dev/null && wait "$coproc_pid"
@@ -206,9 +207,10 @@ _complete_ng_post() {
 }
 
 _complete_ng_selector() {
-    local lines=() reply REPLY sel_option=filenames
+    local lines=() reply REPLY selopt=(-o filenames)
     exec {tty}</dev/tty
-    [[ ${words[1]} = (cd|cdpush) ]] && sel_option=dirnames
+    [[ ${words[1]} = (cd|cdpush) ]] && selopt=(-o dirnames)
+    [[ ${words[$CURRENT]} = -* ]] && selopt=()
     while (( ${#lines[@]} < 2 )); do
         zselect -r 0 "$tty"
         if (( reply[2] == 0 )); then
@@ -242,7 +244,7 @@ _complete_ng_selector() {
     if (( ${#items[@]} > 1 )) ;then
         printf $'\n' >/dev/tty
         longword="$(sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}' <<<"${(F)items}")"
-        SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "${(F)items}" -o $sel_option -F "$longword" >/dev/null
+        SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "${(F)items}" ${selopt[@]} -F "$longword" >/dev/null
         code="$?"
         _tput cuu1 >/dev/tty
         [ ! "$selected" ] && [ "$longword" != "$PREFIX" ] && code="0" && selected="$longword"
