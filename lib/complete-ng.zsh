@@ -156,7 +156,6 @@ _complete_ng() {
               | "$_complete_ng_awk" -W interactive -F"$_COMPLETE_NG_SEP" '/^$/{exit}; $1!="" && !x[$1]++ { print $0; system("") }' 2>/dev/null
         )
         coproc_pid="$!"
-set >/tmp/set 2>&1
         __value="$(_complete_ng_selector "$__code" <&p)"
         __code="$?"
         kill -- -"$coproc_pid" 2>/dev/null && wait "$coproc_pid"
@@ -207,10 +206,9 @@ _complete_ng_post() {
 }
 
 _complete_ng_selector() {
-    local lines=() reply REPLY selopt=(-o filenames)
+    local lines=() reply REPLY selopt=()
     exec {tty}</dev/tty
-    [[ ${words[1]} = (cd|cdpush) ]] && selopt=(-o dirnames)
-    [[ ${words[$CURRENT]} = -* ]] && selopt=()
+
     while (( ${#lines[@]} < 2 )); do
         zselect -r 0 "$tty"
         if (( reply[2] == 0 )); then
@@ -239,8 +237,10 @@ _complete_ng_selector() {
         item="${value[5]}"
         values[$item]=$i
         [ "${value[4]}" ] && item+=$'\t'"${value[4]#*  -- }"
+        [ "${value[7]}" = '-f' ] && selopt=(-o filenames)
         items[i]="$item"
     done
+    [[ ${words[1]} = (cd|cdpush) ]] && selopt=(-o dirnames)
     if (( ${#items[@]} > 1 )) ;then
         printf $'\n' >/dev/tty
         longword="$(sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}' <<<"${(F)items}")"
@@ -290,6 +290,7 @@ _complete_ng_compadd() {
     local __noquote="${__flags[(r)-Q]}"
     local __is_param="${__flags[(r)-e]}"
     local __no_matching="${__flags[(r)-U]}"
+
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
         # handle -O -A -D
         builtin compadd "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__hpre[@]}" -- "$@"
@@ -376,7 +377,7 @@ _complete_ng_compadd() {
         __show_str+="${_COMPLETE_NG_SEP}"
 
         # fullvalue, value, index, display, show, prefix
-        printf %s\\n "${(q)prefix}${(q)__real_str}${(q)__suffix}${_COMPLETE_NG_SEP}${(q)__hit_str}${_COMPLETE_NG_SEP}${__comp_index}${_COMPLETE_NG_SEP}${__disp_str}${_COMPLETE_NG_SEP}${(Q)prefix}${__show_str}${_COMPLETE_NG_SPACE_SEP}" >&"${__stdout}"
+        printf %s\\n "${(q)prefix}${(q)__real_str}${(q)__suffix}${_COMPLETE_NG_SEP}${(q)__hit_str}${_COMPLETE_NG_SEP}${__comp_index}${_COMPLETE_NG_SEP}${__disp_str}${_COMPLETE_NG_SEP}${(Q)prefix}${__show_str}${_COMPLETE_NG_SEP}$__filenames${_COMPLETE_NG_SEP}" >&"${__stdout}"
     done
     return "$__code"
 }
