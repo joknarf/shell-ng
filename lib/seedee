@@ -64,7 +64,7 @@ function cdselect
     [ "$_cdpr" = 1 ] && [ "$BASH" ] && _tput el >&2
     printf "\n" >&2
   }
-  dir="$(selector -P "$CDPOWERLINE" -m "$nb" -p cd -k _cd_keys -o filenames -F "$filter" -i "$2")"
+  dir="$(selector -P "$CDPOWERLINE" -m "$nb" -k _cd_keys -p cd -o dirnames -F "$filter" -i "$2")"
   [ "$_cdpr" ] && {
     _tput cuu1 >&2
     # bash 3/4 bug repeating prompt/command
@@ -87,7 +87,7 @@ _cdbrowse() {
   $(\cd "$dir" >/dev/null 2>&1) || return
   [ "$depth" = 4 ] && printf "Searching directories..." >&2
   _items="$(find -L "$dir" -xdev -mindepth 1 -maxdepth "$depth" -type d -print 2>/dev/null|\
-    sed -e s"#^$HOME/#\~/#"|sort)"
+    sed -e s"#^$HOME/#\~/#" -e 's#^\./##'|sort)"
   _items_ori="$_items"
 }
 
@@ -97,53 +97,9 @@ _cd_keys()
   typeset k="$1" dir="${_aitems[$_nsel]}"
 
   case "$k" in
-    $'\t') # tab
-      selected="$dir"
-      return 1
-    ;;
-    '[C'|OC) # right
-      [ ! "$filter" ] && _last_nsel=$_nsel
-      _cdbrowse "$dir"
-      [ "$_items" ] || _items="${dir%/}/"
-      return 0
-    ;;
-    '[D'|OD) # left    
-      [[ "$dir" = \~* ]] && dir="$HOME"${dir#\~}
-      [[ "$dir" = */* ]] && dir="${dir%/*}" || dir="."
-      : ${dir:=/}
-      [ "$(\cd "$dir" >/dev/null;pwd)" = / ] && dir=/
-      case "$dir" in
-        .)   dir='..';;
-        *(../)..|..) dir="$dir/..";;
-        */*) dir="${dir%/*}";: ${dir:=/};;
-        *) dir='.';;
-      esac
-      _cdbrowse "$dir"
-      _force_nsel=$_last_nsel
-      unset _last_nsel
-      return 0
-    ;;
-    '[1;2C') # shift right
-      [[ "$dir" = \~* ]] && dir="$HOME"${dir#\~}
-      [[ "$dir" = */* ]] && dir="${dir%/*}" || dir="."
-      : ${dir:=/}
-      _cdbrowse "$dir" 4
-      return 0
-    ;;
-    '[1;2D') # shift left
-      [[ "$dir" = \~* ]] && dir="$HOME"${dir#\~}
-      [[ "$dir" = */* ]] && dir="${dir%/*}" || dir="."
-      : ${dir:=/}
-      _cdbrowse "$dir" 1
-      return 0
-    ;;
     '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
       cddelete "$dir"
     ;;
-    '²')
-      _items=$(printf "%s\n" "${_aitems[@]}"|grep -E -v '^\.[^/]|/\.')
-      [ "$_items" ] || return 1
-      return 0
   esac
   return 2
 }
@@ -311,8 +267,8 @@ function cdsub {
   [ "$1" ] && gr=$($awk 'BEGIN{OFS=".*";for(i=1;i<ARGC;i++) $i=ARGV[i];print}' "$@")
   gr="${gr%/}"
   printf "%s" " Searching directories..." >&2
-  cdselect "$CDNBDIRS" "$(find -L "$orig" -xdev -mindepth 1 -maxdepth "$depth" -type d -print |\
-    sort -u |grep -- "$gr" 2>/dev/null;printf '\e[25D\e[K' >&2)" #_tput breaks old ksh
+  cdselect "$CDNBDIRS" "$(find -L "$orig" -xdev -mindepth 1 -maxdepth "$depth" -type d -print 2>/dev/null|\
+    sort -u |grep -- "$gr" 2>/dev/null|sed -e 's#^\./##';printf '\e[25D\e[K' >&2)" #_tput breaks old ksh
 }
 
 # use locate to get directories

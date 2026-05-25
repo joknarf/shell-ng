@@ -12,58 +12,11 @@ _arrayread() {
     set -f; eval "$1"'=($(cat))'; set +f
 }
 
-_complete-ng_navigate() {
-  local dir=$1 IFS="$IFS"
-  [[ "$dir" = \~/* ]] && dir="$HOME/"${dir#\~/}
-  [ -d "$dir" ] || return 1
-  dir=$(\cd "$dir" >/dev/null 2>&1 && pwd) || return 1
-  [[ $dir = $PWD* ]] && dir="${dir#$PWD}" && dir="${dir#/}"
-  [ "$dir" ] && dir="${dir%/}/"
-  [[ "$dir" = $HOME/* ]] && dir="~/${dir#$HOME/}"
-  _items="$(compgen "$compgen_opt" -- "$dir"|sort -u)"
-  [ "$_items" ] || _items="${dir%/}/"
-  _items_ori="$_items"
-  return 0
-}
-
 _complete-ng_key() {
   local k="$1" item="${_aitems[$_nsel]}"
-  [[ "$item" = \~* ]] && item="$(IFS=;eval printf %s '~'$(printf %q ${item#\~}))"
-  [[ "$item" = \$[A-Za-z0-9_]* ]] && item="$(IFS=;eval printf %s '$'$(printf %q ${item#\$}))"
+  _path_expand "$item"
+  item="$_path_expand"
   case "$k" in
-    $'\t') # tab
-      selected="$item"
-      return 1
-    ;;
-    '[C'|OC) # right
-      _complete-ng_navigate "$item" || return 3
-      return 0
-    ;;
-    '[D'|OD) # left
-      [ -e "$item" ] || return 3
-      [[ "$item" = */* ]] && item="${item%/*}" || item=.
-      _complete-ng_navigate "$item/.." || return 3
-      return 0
-    ;;
-    '²')
-      _items=$(printf "%s\n" "${_aitems[@]}"|grep -E -v '^\.[^/]|/\.')
-      [ "$_items" ] || return 1
-      return 0
-    ;;
-    'OR') # F3
-      _force_nsel=$_nsel
-      [ -r "$item" ] && [ -f "$item" ] || return 0
-      ${PAGER:-less -+EX} "$item"
-      _tput civis
-      return 0
-    ;;
-    'OS') # F4
-      _force_nsel=$_nsel
-      [ -r "$item" ] && [ -f "$item" ] || return 0
-      ${EDITOR:-vi} "$item"
-      _tput civis
-      return 0
-    ;;
     '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
       [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "${item%%$'\t'*}"
     ;;
@@ -82,7 +35,7 @@ _complete-ng() {
         fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
     }
   }
-  [ "$cmd" = 'cd' ] && compgen_opt='-d'
+  [ "$cmd" = 'cd' ] && compgen_opt='-d' && selopt=(-o dirnames)
   [ "$fn" ] && $fn "$@"
   (( ${#COMPREPLY[@]} > 0 )) || {
     type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
@@ -172,6 +125,6 @@ _complete-ng_init() {
 }
 
 : "${COMPLETE_NG_EXCLUDE:=_cdhist_cd}"
-type cdcomplete >/dev/null 2>&1 && cdcomplete
+#type cdcomplete >/dev/null 2>&1 && cdcomplete
 _complete-ng_init
 
