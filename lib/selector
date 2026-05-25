@@ -75,7 +75,7 @@ _menuprompt()
 _showmenu()
 {
   typeset item icon fpath comment
-  typeset -i i min max maxiw maxw maxcw lines w size
+  typeset -i i min max maxiw maxw maxcw w size
 
   _menuprompt
   lines=${_maxlines:-$LINES}
@@ -264,6 +264,7 @@ _file_keys() {
 _domenu()
 {
   typeset o=n _force_nsel
+  typeset -i lines
   _nsel=''
   printf "\r"
   _tput el
@@ -301,20 +302,20 @@ _domenu()
       1) break;;
       3) continue;;
     esac
-
+    echo "$key" >>/tmp/k
     case "$key" in
       '[A'|OA) #up
-        filter='';_select "_nsel-1";;
+        filter='';_select $((_nsel-1));;
       '[B'|OB) #down
-        filter='';_select "_nsel+1";;
+        filter='';_select $((_nsel+1));;
       '[H'|'[D'|OD|'[1;5H'|'[1;2D') #home or [shift] arrowleft
         filter='';_select "1";;
       '[F'|'[C'|OC|'[1;5F'|'[1;2C') #end or [shift] arrowright
-        filter='';_select "nbitems";;
+        filter='';_select "$nbitems";;
       '[6~'|$'\x06'|'[1;2B') #pagedn Ctl-F shift-down
-        filter='';_select "_nsel+lines-1";;
+        filter='';_select $((_nsel+lines-1));;
       '[5~'|$'\x02'|'[1;2A') #pageup Ctl-B shift-up
-        filter='';_select "_nsel-lines+1";;
+        filter='';_select $((_nsel-lines+1));;
       '[19~'|$'\x04'|'[3~') # F8 Ctl-D delete
         unset "_aitems[$_nsel]"
         [ "$ZSH_VERSION" ] && _aitems=("${(@)_aitems[1,$_nsel-1]}" "${(@)_aitems[$_nsel+1,$nbitems]}") ||\
