@@ -78,19 +78,6 @@ function cdselect
   [ "$dir" ] && cdpush "$dir"
 }
 
-_cdbrowse() {
-  typeset dir="$1" depth=${2:-1}
-
-  [[ $dir = \~* ]] && dir="$HOME"${dir#\~}
-  dir="${dir#../${PWD##*/}}"
-  : ${dir:=.}
-  $(\cd "$dir" >/dev/null 2>&1) || return
-  [ "$depth" = 4 ] && printf "Searching directories..." >&2
-  _items="$(find -L "$dir" -xdev -mindepth 1 -maxdepth "$depth" -type d -print 2>/dev/null|\
-    sed -e s"#^$HOME/#\~/#" -e 's#^\./##'|sort)"
-  _items_ori="$_items"
-}
-
 # selector custom keys
 _cd_keys()
 {
