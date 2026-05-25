@@ -167,37 +167,24 @@ function cdhist {
 # expand arg without alias expansion
 # use bash_completion _cd or limited cdcomplete
 _cdhist_cd() {
-  typeset row col word="${COMP_WORDS[1]}" dir IFS=$' \t\n' ts='~/' hs="$HOME/" longword
+  typeset row col word="${COMP_WORDS[1]}" dir IFS=$' \t\n' ts='~/' hs="$HOME/" longword prefix
   [ "$COMP_CWORD" = 1 ] || return 1
-  [[ "$word" = @($|~)[a-zA-Z0-9_/]* ]] && dir="$(eval printf %s "$word")"
-  [ "$dir" ] && {
-    dir="${dir/#$hs/$ts}"
-    COMP_WORDS=( "$1" "$dir" )
-    COMP_LINE="$(printf '%s ' "${COMP_WORDS[@]}")"
-    COMP_LINE="${COMP_LINE% }"
-    COMP_POINT=${#COMP_LINE}
-  }
   if declare -F _cd >/dev/null; then
     _cd "$1" "${COMP_WORDS[1]}"
   else
     type compopt >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
         compgen -f /non-existing-dir/ >/dev/null
-    dir="${dir/#$ts/$hs}"
-    COMP_WORDS=( cd "$dir" )
-    [ "$dir" = ".." ] && dir="../"
+    [ "$word" = ".." ] && word="../"
+    _path_expand "$word";dir="$_path_expand"
+    [[ "$word" = */* ]] && prefix="${word%/*}/" 
     word="${dir##*/}"
     [[ "$dir" = */* ]] && dir="${dir%/*}" || dir='.'
     : ${dir:=/}
     IFS=$'\n'
     set -f
-    COMPREPLY=( $(\cd "$dir" >/dev/null 2>&1 && compgen -d -- "$word") ) 
+    COMPREPLY=( $(\cd "$dir" >/dev/null 2>&1 && compgen -d -P "$prefix" -- "$word") ) 
     set +f
     IFS=$' \t\n'
-    [ ! "${COMPREPLY[0]}" ] && COMPREPLY=() && return
-    dir="${dir%/}/"
-    [ "$dir" = ./ ] && [[ ${COMP_WORDS[1]} != ./* ]] && dir=""
-    COMPREPLY=( "${COMPREPLY[@]/#/$dir}" )
-    # COMP_WORDS=( cd "$dir$word" )
   fi
   [ ${#COMPREPLY[@]} = 1 ] && {
     COMPREPLY[0]="${COMPREPLY[0]/#$ts/$hs}"
