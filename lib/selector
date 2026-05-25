@@ -212,13 +212,13 @@ _file_keys() {
       _path_fprefix=''
       [[ "$item" = */* ]] && item="${item%/*}" || item="."
       : ${item:=/}
-      [ "$(\cd "$item" >/dev/null;pwd)" = / ] && item=/
       case "$item" in
         .) item='..';;
-        *(../)..|..) item="$item/..";;
+        ../*|..) item="$item/..";;
         */*) item="${item%/*}";: ${item:=/};;
         *) item='.';;
       esac
+      [ "$(\cd "$item" >/dev/null;pwd)" = / ] && item=/
       _dirbrowse "$item"
       _force_nsel=$_last_nsel
       unset _last_nsel
