@@ -77,6 +77,9 @@ _showmenu()
   typeset item icon fpath comment
   typeset -i i min max maxiw maxw maxcw w size
 
+  _nsel="${1:-$_nsel}"
+  ((_nsel < 1)) && _nsel=1
+  ((_nsel >= nbitems)) && ((_nsel=nbitems))
   _menuprompt
   lines=${_maxlines:-$LINES}
   ((lines >= LINES)) && ((lines=LINES-1))
@@ -125,16 +128,6 @@ _showmenu()
   _tput ed
   _tput cuu $size
   printf "\r" # begin of line
-}
-
-_select()
-{
-  typeset newsel="$1"
-
-  ((_nsel=newsel))
-  ((_nsel <1 )) && _nsel=1
-  ((_nsel >= nbitems)) && _nsel=$nbitems
-  _showmenu
 }
 
 _items_split()
@@ -296,26 +289,25 @@ _domenu()
         _items_split "."
         filter=""
         nbitems=${#_aitems[@]}
-        _select "${_force_nsel:-1}"
+        _showmenu "${_force_nsel:-1}"
         _force_nsel=''
         continue;;
       1) break;;
       3) continue;;
     esac
-    echo "$key" >>/tmp/k
     case "$key" in
       '[A'|OA) #up
-        filter='';_select $((_nsel-1));;
+        filter='';_showmenu $((_nsel-1));;
       '[B'|OB) #down
-        filter='';_select $((_nsel+1));;
+        filter='';_showmenu $((_nsel+1));;
       '[H'|'[D'|OD|'[1;5H'|'[1;2D') #home or [shift] arrowleft
-        filter='';_select "1";;
+        filter='';_showmenu 1;;
       '[F'|'[C'|OC|'[1;5F'|'[1;2C') #end or [shift] arrowright
-        filter='';_select "$nbitems";;
+        filter='';_showmenu "$nbitems";;
       '[6~'|$'\x06'|'[1;2B') #pagedn Ctl-F shift-down
-        filter='';_select $((_nsel+lines-1));;
+        filter='';_showmenu $((_nsel+lines-1));;
       '[5~'|$'\x02'|'[1;2A') #pageup Ctl-B shift-up
-        filter='';_select $((_nsel-lines+1));;
+        filter='';_showmenu $((_nsel-lines+1));;
       '[19~'|$'\x04'|'[3~') # F8 Ctl-D delete
         unset "_aitems[$_nsel]"
         [ "$ZSH_VERSION" ] && _aitems=("${(@)_aitems[1,$_nsel-1]}" "${(@)_aitems[$_nsel+1,$nbitems]}") ||\
@@ -323,7 +315,7 @@ _domenu()
         nbitems=${#_aitems[@]}
         _tput ed
         [ "$nbitems" = 0 ] && break
-        filter='';_select "$_nsel";;
+        filter='';_showmenu "$_nsel";;
       $'\x7f'|$'\x08') #backspace
         filter="${filter%?}"
         _items="$_items_ori"
