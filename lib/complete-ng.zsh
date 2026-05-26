@@ -206,7 +206,7 @@ _complete_ng_post() {
 }
 
 _complete_ng_selector() {
-    local lines=() reply REPLY
+    local lines=() reply REPLY selopt=()
     exec {tty}</dev/tty
 
     while (( ${#lines[@]} < 2 )); do
@@ -227,7 +227,7 @@ _complete_ng_selector() {
         fi
     done
 
-    local item items longword selected s n
+    local item items longword selected s n tilde
     IFS=$'\n' lines+=($(cat)); IFS=$' \t\n'
     declare -A values
     items=()
@@ -237,12 +237,14 @@ _complete_ng_selector() {
         item="${value[5]}"
         values[$item]=$i
         [ "${value[4]}" ] && item+=$'\t'"${value[4]#*  -- }"
+        [ "${value[7]}" = '-f' ] && selopt=(-o filenames)
         items[i]="$item"
     done
+    [[ ${words[1]} = (cd|cdpush) ]] && selopt=(-o dirnames)
     if (( ${#items[@]} > 1 )) ;then
         printf $'\n' >/dev/tty
         longword="$(sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}' <<<"${(F)items}")"
-        SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "${(F)items}" -o filenames -F "$longword" >/dev/null
+        SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "${(F)items}" ${selopt[@]} -F "$longword" >/dev/null
         code="$?"
         _tput cuu1 >/dev/tty
         [ ! "$selected" ] && [ "$longword" != "$PREFIX" ] && code="0" && selected="$longword"
@@ -253,63 +255,17 @@ _complete_ng_selector() {
     [ "$code" = 0 ] || return $code
     n="${values[$selected]}"
     [ "$n" ] && line="${lines[$n]}}" || {
-        s="$(printf '%q' "${(q)selected}")"
-        s="${s/#\\\\~\//~/}"
+        [[ $selected = ~* ]] && tilde='~'
+        s="$(printf '%s%q' "$tilde" "${(q)selected#\~}")"
         line="${(q)selected}${_COMPLETE_NG_SEP}$s${_COMPLETE_NG_SEP}100${_COMPLETE_NG_SEP}"
     }
     printf %s "$line"
     return 0
 }
-_complete-ng_navigate() {
-  local dir="$1" IFS="$IFS"
-  [[ "$dir" = \~/* ]] && dir="$HOME/${dir#\~/}"
-  [ -d "$dir" ] || return 1
-  dir=$(\cd "$dir" >/dev/null 2>&1 && pwd) || return 1
-  [[ $dir = $PWD* ]] && dir="${dir#$PWD}" && dir="${dir#/}"
-  [ "$dir" ] && dir="${dir%/}/"
-  _items="$(setopt NULL_GLOB; print -rl -- $~dir* $~dir.*|sort -u|sed -e "s#^$HOME/#~/#")"
-  [ "$_items" ] || _items="${dir%/}"
-  _items_ori="$_items"
-  return 0
-}
+
 _complete-ng_key() {
   local k="$1" item="${_aitems[$_nsel]}"
-  [[ "$item" = \~* ]] && item="$(IFS=;eval printf %s '~'$(printf %q ${item#\~}))"
-  [[ "$item" = \$[A-Za-z0-9_]* ]] && item="$(IFS=;eval printf %s '$'$(printf %q ${item#\$}))"
   case "$k" in
-    $'\t') # tab
-      selected="$item"
-      return 1
-    ;;
-    '[C'|OC) # right
-      _complete-ng_navigate "$item" || return 3
-      return 0
-    ;;
-    '[D'|OD) # left
-      [ -e "$item" ] || return 3
-      [[ "$item" = */* ]] && item="${item%/*}" || item=.
-      _complete-ng_navigate "$item/.." || return 3
-      return 0
-    ;;
-    '²')
-      _items=$(printf "%s\n" "${_aitems[@]}"|egrep -v '^\.[^/]|/\.')
-      [ "$_items" ] || return 1
-      return 0
-    ;;
-    'OR') # F3
-      _force_nsel=$_nsel
-      [ -r "$item" ] && [ -f "$item" ] || return 0
-      less -+EX "$item"
-      _tput civis
-      return 0
-    ;;
-    'OS') # F4
-      _force_nsel=$_nsel
-      [ -r "$item" ] && [ -f "$item" ] || return 0
-      ${EDITOR:-vi} "$item"
-      _tput civis
-      return 0
-    ;;
     '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
       [[ $_COMPLETE_NG_CONTEXT = *:_fly,ssh* ]] && COMP_DELFUNC=_fly_hist_del
       [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "${item%%$'\t'*}"
@@ -334,6 +290,7 @@ _complete_ng_compadd() {
     local __noquote="${__flags[(r)-Q]}"
     local __is_param="${__flags[(r)-e]}"
     local __no_matching="${__flags[(r)-U]}"
+
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
         # handle -O -A -D
         builtin compadd "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__hpre[@]}" -- "$@"
@@ -420,7 +377,7 @@ _complete_ng_compadd() {
         __show_str+="${_COMPLETE_NG_SEP}"
 
         # fullvalue, value, index, display, show, prefix
-        printf %s\\n "${(q)prefix}${(q)__real_str}${(q)__suffix}${_COMPLETE_NG_SEP}${(q)__hit_str}${_COMPLETE_NG_SEP}${__comp_index}${_COMPLETE_NG_SEP}${__disp_str}${_COMPLETE_NG_SEP}${(Q)prefix}${__show_str}${_COMPLETE_NG_SPACE_SEP}" >&"${__stdout}"
+        printf %s\\n "${(q)prefix}${(q)__real_str}${(q)__suffix}${_COMPLETE_NG_SEP}${(q)__hit_str}${_COMPLETE_NG_SEP}${__comp_index}${_COMPLETE_NG_SEP}${__disp_str}${_COMPLETE_NG_SEP}${(Q)prefix}${__show_str}${_COMPLETE_NG_SEP}$__filenames${_COMPLETE_NG_SEP}" >&"${__stdout}"
     done
     return "$__code"
 }
