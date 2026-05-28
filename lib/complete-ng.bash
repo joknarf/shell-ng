@@ -118,9 +118,9 @@ _complete-ng_init() {
     source /tmp/.complete-ng.tmp.$$
     \rm -f /tmp/.complete-ng.tmp.$$
   fi
-  builtin complete -F _complete-ng -D 2>/dev/null
-  builtin complete -F _complete-ng -I 2>/dev/null
-  builtin complete -F _complete-ng -E 2>/dev/null
+  builtin complete -D -F _complete-ng 2>/dev/null
+  builtin complete -I -F _complete-ng 2>/dev/null
+  builtin complete -E -F _complete-ng 2>/dev/null
   builtin complete -F _complete-ng ''
 }
 
