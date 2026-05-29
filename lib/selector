@@ -237,7 +237,7 @@ _file_keys() {
       [ "$_items" ] || return 1
       return 0
     ;;
-    'OR') # F3
+    'OR'|$'\x12') # F3 Ctrl-R
       _force_nsel=$_nsel
       [ -r "$item" ] && [ -f "$item" ] || return 0
       exec <&1
@@ -245,7 +245,7 @@ _file_keys() {
       _tput civis
       return 0
     ;;
-    'OS') # F4
+    'OS'|$'\x05') # F4 Ctrl-E
       _force_nsel=$_nsel
       [ -r "$item" ] && [ -f "$item" ] || return 0
       exec <&1
