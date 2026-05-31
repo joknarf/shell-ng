@@ -14,8 +14,6 @@ _arrayread() {
 
 _complete-ng_key() {
   local k="$1" item="${_aitems[$_nsel]}"
-  _path_expand "$item"
-  item="$_path_expand"
   case "$k" in
     '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
       [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "${item%%$'\t'*}"
