@@ -118,7 +118,7 @@ _showmenu()
       _item_expand
       if [ -L "$item" ]; then icon="$SELECTOR_LINK_ICON "
       elif [ -d "$item" ] ;then icon="$SELECTOR_FOLDER_ICON ";fi
-      [ "$icon" ] || case "$item" in
+      [ ! "$icon" ] && [ -e "$item" ] && case "$item" in
         *.tar|*.tar.?z|*.t?z|*.zip|*.rar|*.jar|*.rpm|*.deb) icon="$SELECTOR_ARCH_ICON ";;
         *) icon="$SELECTOR_FILE_ICON ";;
       esac
