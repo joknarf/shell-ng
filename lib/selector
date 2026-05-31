@@ -6,6 +6,7 @@
 : "${SELECTOR_FOLDER_ICON:=}" # 🖿 🗀 📁 📂 🖿        
 : "${SELECTOR_FILE_ICON:=}" #  🗎            🗋 🖹   📄
 : "${SELECTOR_LINK_ICON:=}"
+: "${SELECTOR_ARCH_ICON:=}"
 : "${SELECTOR_CASEI:=false}"
 : "${SELECTOR_POWERLINE:=y}"
 : "${SELECTOR_COL_PROMPT:=30;90;180}" # blue
@@ -116,8 +117,11 @@ _showmenu()
     [ "$_sel_option" ] && {
       _item_expand
       if [ -L "$item" ]; then icon="$SELECTOR_LINK_ICON "
-      elif [ -d "$item" ] ;then icon="$SELECTOR_FOLDER_ICON "
-      else [ -e "$item" ] && icon="$SELECTOR_FILE_ICON ";fi
+      elif [ -d "$item" ] ;then icon="$SELECTOR_FOLDER_ICON ";fi
+      [ "$icon" ] || case "$item" in
+        *.tar|*.tar.?z|*.t?z|*.zip|*.rar|*.jar|*.rpm|*.deb) icon="$SELECTOR_ARCH_ICON ";;
+        *) icon="$SELECTOR_FILE_ICON ";;
+      esac
     }
     if ((_nsel == i)); then
       printf "$disp_item_sel" $w $i $maxw "$icon${ritem:0:$maxiw}" "${comment:0:$maxcw}"
