@@ -195,10 +195,10 @@ _view_file() {
   [ -r "$item" ] && [ -f "$item" ] || return 0
   [ "$_sel_lesspipe" ] && case "$item" in
     *.t?z|*.tar|*.tar.?z|*.rpm|*.zip|*.rar|*.jar|*.deb) 
-      archive="$item"
       _items="$(LESSQUIET=1 $_sel_lesspipe "$item:")"
-      [ "$_items" ] || return 1
-      _items_ori="$_items"
+      [ "$_items" ] || _items="$(LESSQUIET=1 $_sel_lesspipe "$item")"
+      [ "$_items" ] || { _items="$_items_ori";return 3; }
+      archive="$item"
       return 0
     ;;
   esac
