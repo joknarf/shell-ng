@@ -188,7 +188,7 @@ _view_file() {
       *.rar) item="${item#*[0-9][0-9]:[0-9][0-9] *[A-F0-9][A-F0-9][A-F0-9]  }";;
     esac
     item="${item#*[0-9][0-9]:[0-9][0-9] }"
-    item="${item#* [0-9]  [0-9][0-9][0-9][0-9] }"
+    item="${item#*[0-9]  [0-9][0-9][0-9][0-9] }"
     item="${item% *}"
     _force_nsel=$_nsel
     exec <&1
@@ -215,7 +215,7 @@ _view_file() {
 
 _dirbrowse() {
   typeset dir="${1:-.}" depth=${2:-1} 
-  dir=$(\cd "$dir" 2>&1||exit 1;pwd) || return 3
+  dir=$(\cd "$dir" >/dev/null 2>&1||exit 1;pwd) || return 3
   [ "$depth" = 4 ] && printf "Searching directories..." >&2
   _items="$(find -L "$dir" -xdev -mindepth 1 -maxdepth "$depth" "${_find_type[@]}" -print 2>/dev/null|\
     sed -e "s#^$_path_rprefix#$_path_fprefix#" -e s"#^$HOME/#\~/#" -e 's#^\./##' |sort)"
