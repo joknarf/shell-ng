@@ -192,7 +192,7 @@ _view_file() {
     item="${item% *}"
     _force_nsel=$_nsel
     exec <&1
-    LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -Rc' ${PAGER:-less} "$archive:$item" 2>/dev/null || return 3
+    LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -Rc' less "$archive:$item" 2>/dev/null || return 3
     _tput civis
     return 0
   }
@@ -209,7 +209,7 @@ _view_file() {
   esac
   _force_nsel=$_nsel
   exec <&1
-  LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -Rc' ${PAGER:-less} "$item"
+  LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -Rc' less "$item"
   _tput civis
   return 0
 }
