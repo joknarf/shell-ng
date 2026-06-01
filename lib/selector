@@ -7,7 +7,7 @@
 : "${SELECTOR_FILE_ICON:=}" #  🗎            🗋 🖹   📄
 : "${SELECTOR_LINK_ICON:=}"
 : "${SELECTOR_ARCH_ICON:=}"
-: "${SELECTOR_MISS_ICON:=}"
+: "${SELECTOR_MISS_ICON:=}"
 : "${SELECTOR_CASEI:=false}"
 : "${SELECTOR_POWERLINE:=y}"
 : "${SELECTOR_COL_PROMPT:=30;90;180}" # blue
