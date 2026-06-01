@@ -202,6 +202,7 @@ _view_file() {
       _items="$(LESSQUIET=1 $_sel_lesspipe "$item:")"
       [ "$_items" ] || _items="$(LESSQUIET=1 $_sel_lesspipe "$item")"
       [ "$_items" ] || { _items="$_items_ori";return 3; }
+      _items_ori="$_items"
       archive="$item"
       return 0
     ;;
