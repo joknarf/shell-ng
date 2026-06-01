@@ -115,7 +115,7 @@ _showmenu()
     }
     icon=''
     ritem="$item"
-    [ "$_sel_option" ] && {
+    [ "$_sel_option" ] && [ ! "$archive" ] && {
       _item_expand
       if [ ! -e "$item" ]; then icon="$SELECTOR_MISS_ICON "
       elif [ -L "$item" ]; then icon="$SELECTOR_LINK_ICON "
@@ -198,20 +198,22 @@ _view_file() {
     _tput civis
     return 0
   }
+  _force_nsel=$_nsel
   [ -r "$item" ] && [ -f "$item" ] || return 0
   [ "$_sel_lesspipe" ] && case "$item" in
     *.t?z|*.tar|*.tar.?z|*.rpm|*.zip|*.rar|*.jar|*.deb) 
+      _last_nsel=$_nsel _last_items="$_items" _last_items_ori="$_items_ori"
       _items="$(LESSQUIET=1 $_sel_lesspipe "$item:")"
       [ "$_items" ] || _items="$(LESSQUIET=1 $_sel_lesspipe "$item")"
-      [ "$_items" ] || { _items="$_items_ori";return 3; }
+      [ "$_items" ] || { _items="$_last_items";last_items='';return 3; }
       _items_ori="$_items"
       archive="$item"
+      _force_nsel=''
       return 0
     ;;
   esac
-  _force_nsel=$_nsel
   exec <&1
-  LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -Rc' less "$item"
+  LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -Rc' less "$item" 2>/dev/null
   _tput civis
   return 0
 }
@@ -236,17 +238,26 @@ _file_keys() {
       return 1
     ;;
     '[C'|OC) # right
-      [ ! "$filter" ] && _last_nsel=$_nsel
-      [ -d "$item" ] && { _dirbrowse "$item"; return $?; } || { _view_file; return $?; }
+      [ -d "$item" ] && {
+        _last_nsel=$_nsel _last_items="$_items" _last_items_ori="$_items_ori"
+        _dirbrowse "$item"; return $?
+      }
+      _view_file; return $?
     ;;
     '[D'|OD) # left
+      [ "$_last_items" ] && {
+        _items="$_last_items" _items_ori="$_last_items_ori"
+        _last_items='' _last_items_ori=''
+        _force_nsel=$_last_nsel _last_nsel='' archive=''
+        return 0
+      }
       [ "$archive" ] && item="$archive" && _last_nsel=1
       [[ "$item" = */* ]] && item="${item%/*}" || item="."
       [ "$archive" ] || { _path_rprefix=''; _path_fprefix=''; item="$item/.."; }
       archive=''
       _dirbrowse "$item"
       _force_nsel=$_last_nsel
-      unset _last_nsel
+      _last_nsel=''
       return 0
     ;;
     '[1;2C') # shift right
@@ -392,7 +403,7 @@ function selector
   typeset prompt filter
   typeset bg="\e[48;2;" fg="\e[38;2;" pl=""
   typeset wfg="$fg${SELECTOR_COL_TEXT}m"
-  typeset _items _aitems _maxlines _autofilter _keyfunc _sel_option _nsel _items_ori disp_item_sel disp_item disp_form key nbitems _find_type _path_fprefix _path_rprefix _last_nsel e archive
+  typeset _items _aitems _maxlines _autofilter _keyfunc _sel_option _nsel _items_ori disp_item_sel disp_item disp_form key nbitems _find_type _path_fprefix _path_rprefix _last_nsel _last_items _last_items_ori e archive
   prompt='select'
   selected=''
   _maxlines=''
