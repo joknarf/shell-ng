@@ -52,7 +52,6 @@ function cdpush {
 function cddelete
 {
   typeset cdhf=${CDHISTFILE:-~/.cd_history}
-  [[ "$1" = \~* ]] && set -- "$HOME"${1#\~}
   grep -Fxv -- "$1" "$cdhf" >"$cdhf.tmp"
   [ -s "$cdhf.tmp" ] && \mv "$cdhf.tmp" "$cdhf"
 }
