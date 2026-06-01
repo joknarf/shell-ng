@@ -81,11 +81,12 @@ function cdselect
 # selector custom keys
 _cd_keys()
 {
-  typeset k="$1" dir="${_aitems[$_nsel]}"
+  typeset k="$1" item="${_aitems[$_nsel]}"
 
   case "$k" in
     '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
-      cddelete "$dir"
+      _item_expand
+      cddelete "$item"
     ;;
   esac
   return 2
