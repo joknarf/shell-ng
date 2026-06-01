@@ -33,6 +33,7 @@ _complete-ng() {
         fn=$(eval printf '%s' '$'_compfunc_"${cmd//[^a-zA-Z0-9_]/_}")
     }
   }
+  __podman_format_comp_descriptions() { :; }
   [ "$cmd" = 'cd' ] && compgen_opt='-d' && selopt=(-o dirnames)
   [ "$fn" ] && $fn "$@"
   (( ${#COMPREPLY[@]} > 0 )) || {
