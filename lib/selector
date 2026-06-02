@@ -121,7 +121,7 @@ _showmenu()
       elif [ -L "$item" ]; then icon="$SELECTOR_LINK_ICON "
       elif [ -d "$item" ] ;then icon="$SELECTOR_FOLDER_ICON ";fi
       [ ! "$icon" ] && case "$item" in
-        *.tar|*.tar.?z|*.tar.bz2|*.t?z|*.zip|*.rar|*.jar|*.rpm|*.deb) icon="$SELECTOR_ARCH_ICON ";;
+        *.tar|*.tar.?z|*.tar.bz2|*.t?z|*.zip|*.rar|*.jar|*.rpm|*.deb|*.whl) icon="$SELECTOR_ARCH_ICON ";;
         *) icon="$SELECTOR_FILE_ICON ";;
       esac
     }
@@ -186,7 +186,7 @@ _item_expand() {
 _view_file() {
   [ "$archive" ] && {
     case "$archive" in
-      *.zip|*.jar) item="${item#*[0-9][0-9]:[0-9][0-9]   }";;
+      *.zip|*.jar|*.whl) item="${item#*[0-9][0-9]:[0-9][0-9]   }";;
       *.rar) item="${item#*[0-9][0-9]:[0-9][0-9] *[A-F0-9][A-F0-9][A-F0-9]  }";;
     esac
     item="${item#*[0-9][0-9]:[0-9][0-9] }"
@@ -200,7 +200,7 @@ _view_file() {
   _force_nsel=$_nsel
   [ -r "$item" ] && [ -f "$item" ] || return 0
   [ "$_sel_lesspipe" ] && case "$item" in
-    *.t?z|*.tar|*.tar.?z|*.tar.bz2|*.rpm|*.zip|*.rar|*.jar|*.deb) 
+    *.t?z|*.tar|*.tar.?z|*.tar.bz2|*.rpm|*.zip|*.rar|*.jar|*.deb|*.whl) 
       _last_nsel=$_nsel _last_items="$_items" _last_items_ori="$_items_ori"
       _items="$(LESSQUIET=1 $_sel_lesspipe "$item:")"
       [ "$_items" ] || _items="$(LESSQUIET=1 $_sel_lesspipe "$item")"
