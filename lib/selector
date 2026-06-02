@@ -121,7 +121,7 @@ _showmenu()
       elif [ -L "$item" ]; then icon="$SELECTOR_LINK_ICON "
       elif [ -d "$item" ] ;then icon="$SELECTOR_FOLDER_ICON ";fi
       [ ! "$icon" ] && case "$item" in
-        *.tar|*.tar.?z|*.tar.bz2|*.t?z|*.zip|*.rar|*.jar|*.rpm|*.deb|*.whl) icon="$SELECTOR_ARCH_ICON ";;
+        *.tar|*.tar.?z|*.tar.bz2|*.t?z|*.zip|*.rar|*.jar|*.rpm|*.deb|*.whl|*.tgp) icon="$SELECTOR_ARCH_ICON ";;
         *) icon="$SELECTOR_FILE_ICON ";;
       esac
     }
@@ -183,24 +183,28 @@ _item_expand() {
   return 0
 }
 
+_item_arch() {
+  case "$archive" in
+    *.zip|*.jar|*.whl) item="${item#*[0-9][0-9]:[0-9][0-9]   }";;
+    *.rar) item="${item#*[0-9][0-9]:[0-9][0-9] *[A-F0-9][A-F0-9][A-F0-9]  }";;
+  esac
+  item="${item#*[0-9][0-9]:[0-9][0-9] }"
+  item="${item#*[0-9]  [0-9][0-9][0-9][0-9] }"
+  item="$archive:$item"
+}
+
 _view_file() {
   [ "$archive" ] && {
-    case "$archive" in
-      *.zip|*.jar|*.whl) item="${item#*[0-9][0-9]:[0-9][0-9]   }";;
-      *.rar) item="${item#*[0-9][0-9]:[0-9][0-9] *[A-F0-9][A-F0-9][A-F0-9]  }";;
-    esac
-    item="${item#*[0-9][0-9]:[0-9][0-9] }"
-    item="${item#*[0-9]  [0-9][0-9][0-9][0-9] }"
     _force_nsel=$_nsel
     exec <&1
-    LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -Rc' less "$archive:$item" 2>/dev/null || return 3
+    LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -Rc' less "$item" 2>/dev/null || return 3
     _tput civis
     return 0
   }
   _force_nsel=$_nsel
   [ -r "$item" ] && [ -f "$item" ] || return 0
   [ "$_sel_lesspipe" ] && case "$item" in
-    *.t?z|*.tar|*.tar.?z|*.tar.bz2|*.rpm|*.zip|*.rar|*.jar|*.deb|*.whl) 
+    *.t?z|*.tar|*.tar.?z|*.tar.bz2|*.rpm|*.zip|*.rar|*.jar|*.deb|*.whl|*.tgp) 
       _last_nsel=$_nsel _last_items="$_items" _last_items_ori="$_items_ori"
       _items="$(LESSQUIET=1 $_sel_lesspipe "$item:")"
       [ "$_items" ] || _items="$(LESSQUIET=1 $_sel_lesspipe "$item")"
@@ -230,7 +234,7 @@ _dirbrowse() {
 
 _file_keys() {
   typeset k="$1" item="${_aitems[$_nsel]}"
-  [ "$archive" ] || _item_expand 
+  [ "$archive" ] && _item_arch || _item_expand 
   case "$k" in
     $'\t') # tab
       selected="$item"
