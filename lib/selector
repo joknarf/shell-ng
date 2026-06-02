@@ -237,8 +237,10 @@ _file_keys() {
   [ "$archive" ] && _item_arch || _item_expand 
   case "$k" in
     $'\t') # tab
-      selected="$item"
-      return 1
+      [ "$archive" ] && {
+        selected="${_sel_lesspipe##*/} $(printf %q "$item")";
+        return 1
+      }
     ;;
     '[C'|OC) # right
       [ -d "$item" ] && {
@@ -390,7 +392,7 @@ _domenu()
       $'\x01') # Ctl-A => all
         _maxlines=''
         _showmenu;;
-      $'\x0d'|''|$'\n'|$'\t') # enter
+      $'\x0d'|''|$'\n'|$'\t') # enter tab
         selected="${_aitems[$_nsel]}"
         break;;
       *) break;
