@@ -25,6 +25,7 @@ $SELECTOR_USE_TPUT && alias _tput=tput
 command -v whence >/dev/null || whence() { type -p "$@"; }
 read _sel_stty <<<$(whence gnustty stty)
 read _sel_lesspipe <<<$(whence lesspipe.sh lesspipe)
+_sel_lesspipe="${_sel_lesspipe##*/}"
 [ "$_sel_lesspipe" ] && _sel_lessopen="|$_sel_lesspipe %s"
 
 _tput() {
@@ -190,14 +191,15 @@ _item_arch() {
   esac
   item="${item#*[0-9][0-9]:[0-9][0-9] }"
   item="${item#*[0-9]  [0-9][0-9][0-9][0-9] }"
-  item="$archive:$item"
 }
 
 _view_file() {
+  typeset type="${item##*.}"
+  [[ $item = $type || ${#type} -gt 4 ]] && type=:sh || type=''
   [ "$archive" ] && {
     _force_nsel=$_nsel
     exec <&1
-    LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -Rc' less "$item" 2>/dev/null || return 3
+    LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -RSc' less "$archive:$item$type" 2>/dev/null || return 3
     _tput civis
     return 0
   }
@@ -216,7 +218,7 @@ _view_file() {
     ;;
   esac
   exec <&1
-  LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -Rc' less "$item" 2>/dev/null
+  LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -RSc' less "$item$type" 2>/dev/null
   _tput civis
   return 0
 }
@@ -238,7 +240,7 @@ _file_keys() {
   case "$k" in
     $'\t') # tab
       [ "$archive" ] && {
-        selected="${_sel_lesspipe##*/} $(printf %q "$item")";
+        selected="$_sel_lesspipe $(printf %q "$archive:$item")";
         return 1
       }
     ;;
@@ -281,6 +283,12 @@ _file_keys() {
       _items=$(printf "%s\n" "${_aitems[@]}"|grep -E -v '^\.[^/]|/\.')
       [ "$_items" ] || return 1
       return 0
+    ;;
+    'OQ') # F2
+      [ "$archive" ] && {
+        selected="$_sel_lesspipe $archive:$item"
+        return 1
+      }
     ;;
     'OR'|$'\x12') # F3 Ctrl-R
       _view_file
@@ -352,6 +360,10 @@ _domenu()
         filter='';_showmenu $((_nsel+lines-1));;
       '[5~'|$'\x02'|'[1;2A') #pageup Ctl-B shift-up
         filter='';_showmenu $((_nsel-lines+1));;
+      'OQ') # F2
+        selected="${_sel_lesspipe:-cat} ${_aitems[$_nsel]}"
+        break
+      ;;
       '[19~'|$'\x04'|'[3~') # F8 Ctl-D delete
         unset "_aitems[$_nsel]"
         [ "$ZSH_VERSION" ] && _aitems=("${(@)_aitems[1,$_nsel-1]}" "${(@)_aitems[$_nsel+1,$nbitems]}") ||\
