@@ -36,10 +36,10 @@ _complete-ng() {
   declare -F "__${cmd}_format_comp_descriptions" >/dev/null && eval "__${cmd}_format_comp_descriptions"'() { :; }'
   [ "$cmd" = 'cd' ] && compgen_opt='-d' && selopt=(-o dirnames)
   [ "$fn" ] && $fn "$@"
-  (( ${#COMPREPLY[@]} > 0 )) || {
+  ((${#COMPREPLY[@]} > 0)) || {
     type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
         compgen -f /non-existing-dir/ >/dev/null
-    [ "$COMP_CWORD" -le 0 ] && [ "$word" ] && opt="-c"
+    ((COMP_CWORD==0)) && opt="-c" # complete command
     _arrayread COMPREPLY <<<"$(compgen $opt -- "$word")"
   }
   [ "${#COMPREPLY[@]}" = 1 ] && COMPREPLY=("${COMPREPLY%%$'\t'*}") && return
@@ -62,6 +62,7 @@ _complete-ng() {
     }
   }
   type "compopt" &>/dev/null && { [[ $(compopt) = *-o\ filename* ]] || selopt=(); }
+  ((COMP_CWORD==-1)) && compopt +o filenames # -1 empty command
   # longest common prefix
   longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
   [ "$longword" ] || longword="$word"
