@@ -481,15 +481,15 @@ function selector
   disp_form="$bg${SELECTOR_COL_PROMPT}m$wfg %s $fg${SELECTOR_COL_PROMPT}m$bg${SELECTOR_COL_TOTAL}m$pl$wfg %s$fg${SELECTOR_COL_TOTAL}m\e[49m$pl\e[0m %s"
   typeset _stty_ori=$($_sel_stty -g </dev/tty 2>/dev/null)
   $_sel_stty intr '' </dev/tty 2>/dev/null
-  LC_ALL=$__selector_lc _domenu >&2
+  [ "$_sel_lc" ] && LC_ALL="$_sel_lc" _domenu >&2 || _domenu >&2
   $_sel_stty "$_stty_ori" </dev/tty 2>/dev/null
   selected="${selected%%$'\t'*}"
   [ "$selected" ] && printf "%s" "$selected" && return 0
   return 1
 }
 
-[[ "$LANG" = *UTF-8 ]] && __selector_lc="$LANG" || {
-  type locale >/dev/null 2>/dev/null && locale -a |grep -iq "en_US.UTF-*8" && __selector_lc=en_US.UTF-8 || __selector_lc=C.UTF-8
+[[ "$LANG" = *UTF-8 ]] || {
+  type locale >/dev/null 2>/dev/null && locale -a |grep -iq "en_US.UTF-*8" && __sel_lc=en_US.UTF-8 || __sel_lc=C.UTF-8
 }
 
 [ "$1" ] && { selector "$@"; exit $?; }
