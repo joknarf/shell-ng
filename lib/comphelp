@@ -1,4 +1,4 @@
-type gawk &>/dev/null && declare -A _git_help _puppet_help 2>/dev/null || {
+type -p gawk &>/dev/null && declare -A _git_help _puppet_help 2>/dev/null || {
   # not supported
   comphelp() { :; }
   return
@@ -67,7 +67,7 @@ comphelp() {
       (( ${#_git_help[@]} == 0 )) && _git_cmd_help
       [[ $opts = -* ]] && {
         git_cmd="${COMP_WORDS[1]}"
-        [ "${_git_help[$git_cmd]}" ] && _maphelp "$cmd" "$git_cmd" -h
+        [ "${_git_help[$git_cmd]}" ] && _maphelp "$cmd" help "$git_cmd" 
         return
       }	
       [ "$COMP_CWORD" = 1 ] && {

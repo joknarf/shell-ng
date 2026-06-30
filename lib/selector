@@ -206,7 +206,7 @@ _view_file() {
   _force_nsel=$_nsel
   [ -r "$item" ] && [ -f "$item" ] || return 0
   [ "$_sel_lesspipe" ] && case "$item" in
-    *.t?z|*.tar|*.tar.?z|*.tar.bz2|*.rpm|*.zip|*.rar|*.jar|*.deb|*.whl|*.tgp) 
+    *.t?z|*.tar|*.tar.?z|*.tar.bz2|*.rpm|*.zip|*.rar|*.jar|*.deb|*.whl|*.tgp)
       _last_nsel=$_nsel _last_items="$_items" _last_items_ori="$_items_ori"
       _items="$(LESSQUIET=1 $_sel_lesspipe "$item:")"
       [ "$_items" ] || _items="$(LESSQUIET=1 $_sel_lesspipe "$item")"
@@ -236,7 +236,7 @@ _dirbrowse() {
 
 _file_keys() {
   typeset k="$1" item="${_aitems[$_nsel]}"
-  [ "$archive" ] && _item_arch || _item_expand 
+  [ "$archive" ] && _item_arch || _item_expand
   case "$k" in
     $'\t') # tab
       [ "$archive" ] && {
@@ -420,7 +420,7 @@ function selector
   typeset prompt filter
   typeset bg="\e[48;2;" fg="\e[38;2;" pl=""
   typeset wfg="$fg${SELECTOR_COL_TEXT}m"
-  typeset _items _aitems _maxlines _autofilter _keyfunc _sel_option _nsel _items_ori disp_item_sel disp_item disp_form key nbitems _find_type _path_fprefix _path_rprefix _last_nsel _last_items _last_items_ori e archive
+  typeset _items _aitems _maxlines _autofilter _keyfunc _sel_option _nsel _items_ori disp_item_sel disp_item disp_form key nbitems _find_type _path_fprefix _path_rprefix _last_nsel _last_items _last_items_ori e archive quiet shift
   prompt='select'
   selected=''
   _maxlines=''
@@ -428,7 +428,10 @@ function selector
   _powerline="$SELECTOR_POWERLINE"
   _keyfunc=""
   _sel_option=""
+  quiet=false
+  
   while [ $# -gt 0 ]; do
+    shift=2
     case "$1" in
       -p|--prompt)
         [ "$2" ] && prompt="$2" || return 1
@@ -459,6 +462,8 @@ function selector
         _find_type=();set -A _find_type 2>/dev/null
         [ "$_sel_option" = dirnames ] && _find_type=(-type d)
         ;;
+      -q|--quiet) quiet=true;shift=1
+        ;;
       *)
         printf "usage: selector [-p <prompt>] -i <items>|-f <itemfile> [-P <y|n>] [-k <keyfunc>]\n"
         printf "args :\n"
@@ -472,20 +477,22 @@ function selector
         return 1
         ;;
     esac
-    shift 2
+    shift $shift
   done
   [ "$_powerline" = "y" ] || pl="►"
   [ "$_items" ] || return 1
   disp_item_sel="\n$bg${SELECTOR_COL_ARROW}m$wfg %*s $fg${SELECTOR_COL_ARROW}m\e[49m$pl$fg${SELECTOR_COL_SELECTED}m%-*s$fg${SELECTOR_COL_COMSEL}m%s\e[0m"
   disp_item="\n$fg${SELECTOR_COL_NUM}m %*s  $fg${SELECTOR_COL_ITEM}m%-*s$fg${SELECTOR_COL_COMMENT}m%s\e[0m"
   disp_form="$bg${SELECTOR_COL_PROMPT}m$wfg %s $fg${SELECTOR_COL_PROMPT}m$bg${SELECTOR_COL_TOTAL}m$pl$wfg %s$fg${SELECTOR_COL_TOTAL}m\e[49m$pl\e[0m %s"
+  [ -t 0 ] || exec </dev/tty
   typeset _stty_ori=$($_sel_stty -g </dev/tty 2>/dev/null)
   $_sel_stty intr '' </dev/tty 2>/dev/null
   [ "$__sel_lc" ] && LC_ALL="$__sel_lc" _domenu >&2 || _domenu >&2
   $_sel_stty "$_stty_ori" </dev/tty 2>/dev/null
   selected="${selected%%$'\t'*}"
-  [ "$selected" ] && printf "%s" "$selected" && return 0
-  return 1
+  [ "$selected" ] || return 1
+  $quiet || printf "%s" "$selected"
+  return 0
 }
 
 [[ "$LANG" = *UTF-8 ]] || {

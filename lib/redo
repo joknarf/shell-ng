@@ -1,4 +1,4 @@
-# redo bash command history
+# redo bash/zsh command history
 # Author : Franck Jouvanceau
 #
 # bash bind -x prefix
@@ -7,24 +7,41 @@
 : ${REDO_USER_CHAR:="$"}
 : ${REDO_ROOT_CHAR:="#"}
 
-_get_hist()
+_parse_hist()
 {
-  typeset _hist
-  [ "$BASH" ] && {
-    _hist="$( (fc -lnr -0 -1000) )" # missing last cmd without subshell on bash <4.4
-    [ "$_hist" ] || _hist="$(fc -lnr -1000)" # bug bash <4.4 with multiline last command
-  }
-  [ "$ZSH_VERSION" ] && _hist=$(printf "\t %s\n" "${history[@]}")
-  printf "%s" "$_hist"| awk '
+  awk '
     BEGIN{ done[""]=1 }
     $0 in done {next}
-    {done[$0]=1;sub("\n$","");gsub("\n",ret);print $0}
-  ' RS="\n*\t " ret='↵ '  
+    NR>1{n="\n"}
+    /^\t /{done[$0]=1;printf(n"%s", substr($0,3));next}
+    { printf(ret "%s", $0) }
+  ' ret='↵ '
+}
+
+_get_hist()
+{
+  local hst="$HISTTIMEFORMAT"
+  case "$BASH_VERSION#$ZSH_VERSION" in
+    3.*|4.[01].*) # bug fc missing prev cmd
+      HISTTIMEFORMAT=''
+      history |awk '
+       /^ *[0-9]+  /{sub("^ *","",$0);printf("\n%s",$0);next}
+       {printf ret $0}
+      ' ret='↵ ' |sort -rn |sed -E 's/^[0-9]+  //' |awk '
+      BEGIN{done[""]=1}
+      $0 in done{next}
+      {done[$0]=1}
+      1'
+      HISTTIMEFORMAT="$hst"
+    ;; 
+    "$BASH_VERSION#") fc -lnr -0 -10000 |_parse_hist;;
+    "#$ZSH_VERSION") _parse_hist <<<$'\t '"${(pj:\n\t :)history}";;
+  esac
 }
 
 _redo_del()
 {
-  typeset todel="$1" i _hist
+  local todel="$1" i _hist
   [ "$todel" ] || return
 
   # remove from HISTFILE
@@ -71,11 +88,11 @@ _redo_key()
 }
 _redo_selector()
 {
-  typeset _redo _hist t l nl=$'\n'
+  local _hist t l nl=$'\n'
+  [ "$2" ] || local selected
   [ "$BASH" ] && _tput el >&2 && printf "%s" "$1" >&2
   printf "\n" >&2
-  _redo="$(selector -p redo -m 10 -k _redo_key -i "$(_get_hist |grep -F -- "$1" 2>/dev/null)" || printf "%s" "$1")"
-  printf "%s" "${_redo//↵ /$nl}"
+  selector -q -p redo -m 10 -k _redo_key -f - <<<"$(_get_hist |grep -F -- "$1" 2>/dev/null)" || selected="$1"
   _tput cuu1 >&2
   # bash 3/4 bug repeating prompt/command
   [[ "$BASH_VERSION" = @(3.*|4.[0-3].*) ]] && {
@@ -83,10 +100,15 @@ _redo_selector()
     l=$(( ${#PS1} - ${#t} ))
     [ "$l" -gt 0 ] && _tput cuu $l >&2
   }
+  selected="${selected//↵ /$nl}"
+  [ "$2" ] && return
+  printf "%s" "${selected}"
 }
 
 _redow() {
-  BUFFER=$(_redo_selector "$BUFFER")
+  local selected
+  _redo_selector "$BUFFER" -
+  BUFFER="$selected"
   #zle reset-prompt
   zle -Rc
   zle end-of-line
@@ -95,16 +117,17 @@ _redow() {
 
 # bash bind -x bugged clearing prompt/command
 _redob() {
-    typeset _ps1
+    local _ps1 selected
     [ "$UID" = 0 ] && _ps1="$REDO_ROOT_CHAR" || _ps1="$REDO_USER_CHAR"
     printf "\r%s " "$_ps1" >&2
-    READLINE_LINE=$(_redo_selector "$READLINE_LINE")
+    _redo_selector "$READLINE_LINE" -
+    READLINE_LINE=$selected
     READLINE_POINT=${#READLINE_LINE}
 }
 
 _redo_binds()
 {
-  typeset redo_bind
+  local redo_bind
   [ -t 1 ] || return
   [[ ! -o emacs ]] && [[ ! -o vi ]] && set -o emacs
   [ "${BASH_VERSION%%.*}" = 3 ] && {
