@@ -52,7 +52,7 @@ _redo_del()
       print(substr($0, 1, ind-1))
       $0 = substr($0, ind+length(todel)-1)
     }
-  }1' ret='↵ ' RS='\003' ORS='' b="$BASH" todel="\n${todel//\\/\\\\}\n" "${HISTFILE:=~/.bash_history}" >~/.redo_history.tmp 2>/dev/null && mv ~/.redo_history.tmp "${HISTFILE:=~/.bash_history}"
+  }1' ret='↲ ' RS='\003' ORS='' b="$BASH" todel="\n${todel//\\/\\\\}\n" "${HISTFILE:=~/.bash_history}" >~/.redo_history.tmp 2>/dev/null && mv ~/.redo_history.tmp "${HISTFILE:=~/.bash_history}"
 
   [ "$BASH" ] && {
     _hist="$( (fc -lr -0 -1000) )" # missing last cmd without subshell on bash <4.4
@@ -61,7 +61,7 @@ _redo_del()
         {sub("\n$","");gsub("\n",ret)}
         $0==todel {gsub("^\n|\t $","",prevrt);print prevrt }
         {prevrt=RT}
-      ' RS="\n*[0-9]+\t " ret='↵ ' todel="${todel//\\/\\\\}")
+      ' RS="\n*[0-9]+\t " ret='↲ ' todel="${todel//\\/\\\\}")
     do
       history -d $i
     done
@@ -100,7 +100,7 @@ _redo_selector()
     l=$(( ${#PS1} - ${#t} ))
     [ "$l" -gt 0 ] && _sel_tput cuu $l >&2
   }
-  selected="${selected//↵ /$nl}"
+  selected="${selected//↲ /$nl}"
   [ "$2" ] && return
   printf "%s" "${selected}"
 }
