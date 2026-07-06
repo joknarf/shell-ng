@@ -14,8 +14,8 @@ _parse_hist()
     $0 in done {next}
     NR==1{next}
     { done[$0]=1 }
-    { sub("\n$","");gsub("\n",ret);rec=substr($0,2);print rec }
-  ' RS='\t' ret='↵ '
+    { sub("\n$","");gsub("\n",ret);print substr($0,2) }
+  ' RS='\t' ret='↲ '
 }
 
 _get_hist()
@@ -27,7 +27,7 @@ _get_hist()
       history |awk '
        /^ *[0-9]+  /{sub("^ *","",$0);printf("\n%s",$0);next}
        {printf ret $0}
-      ' ret='↵ ' |sort -rn |sed -E 's/^[0-9]+  //' |awk '
+      ' ret='↲ ' |sort -rn |sed -E 's/^[0-9]+  //' |awk '
       BEGIN{done[""]=1}
       $0 in done{next}
       {done[$0]=1}
