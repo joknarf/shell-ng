@@ -27,6 +27,10 @@ read _sel_stty < <(whence gnustty stty)
 read _sel_lesspipe < <(whence lesspipe.sh lesspipe)
 _sel_lesspipe="${_sel_lesspipe##*/}"
 [ "$_sel_lesspipe" ] && _sel_lessopen="|$_sel_lesspipe %s"
+_sel_tmout=0.001
+[ "$KSH_VERSION" ] && _sel_tmout=0.01
+[[ "$BASH_VERSION" = 3.* ]] && _sel_tmout=1
+
 
 _sel_tput() {
     case "$1" in
@@ -71,7 +75,7 @@ _sel_probe_smam() {
 _sel_tty_init() {
   $tty_init && return
   _stty_ori="$($_sel_stty -g </dev/tty 2>/dev/null)"
-  $_sel_stty -echo </dev/tty 2>/dev/null
+  $_sel_stty intr '' -echo </dev/tty 2>/dev/null
   [ "$LINES" ] || read -r LINES COLUMNS < <($_sel_stty size </dev/tty)
   _sel_tput civis
   [ "$SEL_SMAM" ] || _sel_probe_smam
@@ -90,21 +94,25 @@ _sel_tty_restore() {
   $tty_init || return
   _sel_tput ed >&2
   _sel_tput cnorm >&2
-  trap - INT TERM
+  #trap - INT TERM
   tty_init=false
   $_sel_stty $_stty_ori </dev/tty >/dev/null 2>&1
 }
 
 _sel_load_items() {
-    typeset nb=1 it 
+    typeset nb=1 it s=$SECONDS
     stream=1
     _sel_init_filter
     _aitems=();set -A _aitems 2>/dev/null
     while IFS=$'\n' read -r it;do
-        [ "$break" ] && return
+        ((nb == 2)) && _sel_menuprompt "Loading..."
+        ((nb == _maxlines)) && [ "$stream" ] && _sel_showmenu
         _aitems[nb++]="$it"
-        ((${#_aitems[@]} == 2)) && _sel_menuprompt "Loading..."
-        ((${#_aitems[@]} == _maxlines)) && { [ "$stream" ] && _sel_showmenu; }
+        ((s!=SECONDS)) && {
+          IFS= read -rs -n1 -t $_sel_tmout key </dev/tty
+          [[ $key == $'\003' ]] && { exec <&-; break=1; break; }
+          ((s=SECONDS))
+        }
     done
     nbitems=${#_aitems[@]}
     stream=''
@@ -238,15 +246,13 @@ _sel_items_filter()
 
 _sel_readkey()
 {
-  typeset o=${1:-n} k tmout=0.001
+  typeset o=${1:-n} k 
   [ "$break" ] && return
-  [ "$KSH_VERSION" ] && tmout=0.01
   IFS= read -rs"$o"1 key
   [ "$key" = $'\x1b' ] && key="" && while [ ! "$break" ]
   do
     k=""
-    LC_NUMERIC=C read -rs"$o"1 -t $tmout k 2>/dev/null # LC_NUMERIC=C for old ksh
-    [ $? = 1 ] && [ "$BASH" ] && read -rs"$o"1 -t 1 k # old bash
+    LC_NUMERIC=C read -rs"$o"1 -t $_sel_tmout k 2>/dev/null # LC_NUMERIC=C for old ksh
     [ ! "$k" ] && key=${key:-$'\x1b'} && break
     key+="$k"
     case "$key" in
@@ -596,7 +602,7 @@ function selector
   done
   [ "$_powerline" = "y" ] || pl="►"
   [ ! "$stream" ] && ((${#_items}==0)) && return 1
-  trap '_sel_tty_restore;return' INT TERM
+  #trap '_sel_tty_restore;return' INT TERM
   [ "$stream" ] && {
     [ "$itemfile" = - ] && _sel_load_items >&2 || _sel_load_items <"$itemfile" >&2
   } || _sel_load_items <<<"$_items" >&2
@@ -605,7 +611,7 @@ function selector
     [ "$__sel_lc" ] && LC_ALL="$__sel_lc" _sel_domenu >&2 || _sel_domenu >&2
   }
   _sel_tty_restore
-  trap - INT TERM
+  #trap - INT TERM
   unset break
   selected="${selected%%$'\t'*}"
   [ "$selected" ] || return 1
