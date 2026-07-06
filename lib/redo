@@ -12,10 +12,10 @@ _parse_hist()
   awk '
     BEGIN{ done[""]=1 }
     $0 in done {next}
-    NR>1{n="\n"}
-    /^\t /{done[$0]=1;printf(n"%s", substr($0,3));next}
-    { printf(ret "%s", $0) }
-  ' ret='↵ ' 2>/dev/null
+    NR==1{next}
+    { done[$0]=1 }
+    { sub("\n$","");gsub("\n",ret);rec=substr($0,2);print rec }
+  ' RS='\t' ret='↵ '
 }
 
 _get_hist()
