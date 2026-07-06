@@ -28,7 +28,7 @@ _complete_ng_browse() {
     typeset selected tilde
     zle -Rc
     printf '\n' >&2
-    SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -q -m 10 -k _complete-ng_key -o filenames -f - <<(setopt NULL_GLOB; print -rl -- .* *)
+    SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -q -m 10 -k _complete-ng_key -o filenames -f <(setopt NULL_GLOB; print -rl -- .* *)
     _sel_tput cuu1 >&2
     BUFFER="$selected"
     zle reset-prompt

@@ -52,7 +52,7 @@ _redo_del()
       print(substr($0, 1, ind-1))
       $0 = substr($0, ind+length(todel)-1)
     }
-  }1' ret='↵ ' RS='\003' ORS='' b="$BASH" todel="\n${todel//\\/\\\\}\n" "${HISTFILE:=~/.bash_history}" >~/.redo_history.tmp 2>/dev/null && mv ~/.redo_history.tmp "${HISTFILE:=~/.bash_history}" 
+  }1' ret='↵ ' RS='\003' ORS='' b="$BASH" todel="\n${todel//\\/\\\\}\n" "${HISTFILE:=~/.bash_history}" >~/.redo_history.tmp 2>/dev/null && mv ~/.redo_history.tmp "${HISTFILE:=~/.bash_history}"
 
   [ "$BASH" ] && {
     _hist="$( (fc -lr -0 -1000) )" # missing last cmd without subshell on bash <4.4

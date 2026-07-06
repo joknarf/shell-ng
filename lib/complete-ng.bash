@@ -67,7 +67,7 @@ _complete-ng() {
   longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
   [ "$longword" ] || longword="$word"
   comphelp
-  SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -q -m 10 -k _complete-ng_key "${selopt[@]}" -F "$longword" -f - < <(printf "%s\n" "${COMPREPLY[@]}"|"${sortcmd[@]}") && COMPREPLY=("$selected") || COMPREPLY=()
+  SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -q -m 10 -k _complete-ng_key "${selopt[@]}" -F "$longword" -f <(printf "%s\n" "${COMPREPLY[@]}"|"${sortcmd[@]}") && COMPREPLY=("$selected") || COMPREPLY=()
   #kill -WINCH $$ # force redraw prompt
   _sel_tput "cuu1" >&2
   _sel_tput "cuf" "$((col-1))" >&2
