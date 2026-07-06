@@ -472,7 +472,7 @@ _sel_domenu()
       '[5~'|$'\x02'|'[1;2A') #pageup Ctl-B shift-up
         filter='';_sel_showmenu $((_nsel-lines+1));;
       'OQ') # F2
-        selected="${_sel_lesspipe:-cat} ${_aitems[$_nsel]}"
+        selected="${_sel_lesspipe:-cat} $item"
         break
       ;;
       '[19~'|$'\x04'|'[3~') # F8 Ctl-D delete
@@ -524,7 +524,7 @@ _sel_domenu()
       $'\x0d'|''|$'\n'|$'\t') # enter tab
         selected="$item"
         break;;
-      *) break;
+      *) selected='';break;
     esac
   done
   printf "\e[?7h" #wrap
