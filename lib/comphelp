@@ -8,26 +8,26 @@ _git_cmd_help() {
   local k v
   while read -r k v;do
     [ "$k" ] && _git_help["$k"]="$v"
-  done <<<"$(git help -a |grep '^   [[:alnum:]]')"
+  done < <(git help -a |grep '^   [[:alnum:]]')
 }
 
 _puppet_cmd_help() {
   local k v
   while read -r k v;do
     _puppet_help["$k"]="$v"
-  done <<<"$(puppet help |grep '    [[:alnum:]]')"
+  done < <(puppet help |grep '    [[:alnum:]]')
 }
 
 _maphelp()
 {
   declare -A help
   local opt desc k
-  _arrayread COMPREPLY <<<"$(
+  _arrayread COMPREPLY < <(
     case "$1" in
         -) cat - ;;
         *) TERM=dumb LC_ALL=C "$@" 2>&1;;
     esac |_parse_help_desc
-  )"
+  )
 }
 
 comphelp() {
@@ -51,16 +51,16 @@ comphelp() {
       [[ $opts = -* ]] && _maphelp command "$cmd" -help
     ;;
     python|python[2-3]|python[2-3].[0-9])
-      [[ $opts = -* ]] && _maphelp - <<<"$(command "$cmd" -h 2>&1 | sed -e 's/^/ /' -e 's/://')"
+      [[ $opts = -* ]] && _maphelp - < <(command "$cmd" -h 2>&1 | sed -e 's/^/ /' -e 's/://')
     ;;
     alpine|apropos|arping|cvsps|fusermount|iftop|_ionice|ipmitool|lz4|lz4c|man|micropython|monodevelop|nc|ncftp|ngrep|perl|perldoc|pine|pypy|pypy3|sbopkg|smbcacls|smbclient|smbcquotas|smbget|smbpasswd|smbtar|smbtree|strace|whatis|xxd|zopflipng)
       [[ $opts = -* ]] && _maphelp command "$cmd" -h
     ;;
     flyto|fto|fssh)
-      _maphelp - <<<"$((man "ssh" |col -b) 2>/dev/null)"
+      _maphelp - < <((man "ssh" |col -b) 2>/dev/null)
     ;;
     ssh|sftp|scp)
-      [[ $opts = -* ]] && _maphelp - <<<"$((man "$cmd" |col -b) 2>/dev/null)"
+      [[ $opts = -* ]] && _maphelp - < <((man "$cmd" |col -b) 2>/dev/null)
     ;;
     git)
       local git_cmd i git_help
@@ -80,7 +80,7 @@ comphelp() {
     ;;
     find|gfind)
         type man >/dev/null 2>&1 || return
-        _maphelp - <<<"$(man "$cmd" |col -b |awk '/-anewer and/{next}/^     +-/{print $0;getline;print $0}/EXIT/{exit}' 2>&1)"
+        _maphelp - < <(man "$cmd" |col -b |awk '/-anewer and/{next}/^     +-/{print $0;getline;print $0}/EXIT/{exit}' 2>&1)
     ;;
     puppet)
       (( ${#_puppet_help[@]} == 0 )) && _puppet_cmd_help
@@ -88,7 +88,7 @@ comphelp() {
         local _cmd i
         _cmd="${COMP_WORDS[1]}"
         [ "${_puppet_help[$_cmd]}" ] && \
-            _maphelp - <<<"$("$cmd" "$_cmd" -h 2>&1|sed -e 's/[*:]//g')"
+            _maphelp - < <("$cmd" "$_cmd" -h 2>&1|sed -e 's/[*:]//g')
         return
       }
       [ "$COMP_CWORD" = 1 ] && {

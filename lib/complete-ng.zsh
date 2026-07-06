@@ -28,8 +28,8 @@ _complete_ng_browse() {
     typeset selected tilde
     zle -Rc
     printf '\n' >&2
-    SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -q -m 10 -k _complete-ng_key -i "$(setopt NULL_GLOB; print -rl -- .* *|sort -u)" -o filenames 
-    _tput cuu1 >&2
+    SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -q -m 10 -k _complete-ng_key -o filenames -f - <<(setopt NULL_GLOB; print -rl -- .* *)
+    _sel_tput cuu1 >&2
     BUFFER="$selected"
     zle reset-prompt
     zle end-of-line
@@ -241,9 +241,9 @@ _complete_ng_selector() {
     if (( ${#items[@]} > 1 )) ;then
         printf $'\n' >/dev/tty
         longword="$(sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}' <<<"${(F)items}")"
-        SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -m 10 -k _complete-ng_key -i "${(F)items}" ${selopt[@]} -F "$longword" >/dev/null
+        SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -q -m 10 -k _complete-ng_key -F "$longword" "${selopt[@]}" -f - <<<"${(F)items}"
         code="$?"
-        _tput cuu1 >/dev/tty
+        _sel_tput cuu1 >/dev/tty
         [ ! "$selected" ] && [ "$longword" != "$PREFIX" ] && code="0" && selected="$longword"
     else
         selected="${items%%$'\t'*}"
@@ -251,7 +251,7 @@ _complete_ng_selector() {
     fi
     [ "$code" = 0 ] || return $code
     n="${values[$selected]}"
-    [ "$n" ] && line="${lines[$n]}}" || {
+    [ "$n" ] && line="${lines[$n]}" || {
         [[ $selected = ~* ]] && tilde='~'
         s="$(printf '%s%q' "$tilde" "${(q)selected#\~}")"
         line="${(q)selected}${_COMPLETE_NG_SEP}$s${_COMPLETE_NG_SEP}100${_COMPLETE_NG_SEP}"
@@ -261,11 +261,11 @@ _complete_ng_selector() {
 }
 
 _complete-ng_key() {
-  local k="$1" item="${_aitems[$_nsel]}"
+  local k="$1"
   case "$k" in
     '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
       [[ $_COMPLETE_NG_CONTEXT = *:_fly,ssh* ]] && COMP_DELFUNC=_fly_hist_del
-      [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "${item%%$'\t'*}"
+      [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "$item"
     ;;
   esac
   return 2

@@ -15,7 +15,7 @@ _parse_hist()
     NR>1{n="\n"}
     /^\t /{done[$0]=1;printf(n"%s", substr($0,3));next}
     { printf(ret "%s", $0) }
-  ' ret='↵ '
+  ' ret='↵ ' 2>/dev/null
 }
 
 _get_hist()
@@ -52,7 +52,7 @@ _redo_del()
       print(substr($0, 1, ind-1))
       $0 = substr($0, ind+length(todel)-1)
     }
-  }1' ret='↵ ' RS='\003' ORS='' b="$BASH" todel="\n${todel//\\/\\\\}\n" "${HISTFILE:=~/.bash_history}" >~/.redo_history.tmp && mv ~/.redo_history.tmp "${HISTFILE:=~/.bash_history}" 
+  }1' ret='↵ ' RS='\003' ORS='' b="$BASH" todel="\n${todel//\\/\\\\}\n" "${HISTFILE:=~/.bash_history}" >~/.redo_history.tmp 2>/dev/null && mv ~/.redo_history.tmp "${HISTFILE:=~/.bash_history}" 
 
   [ "$BASH" ] && {
     _hist="$( (fc -lr -0 -1000) )" # missing last cmd without subshell on bash <4.4
@@ -72,13 +72,13 @@ _redo_del()
 
 redodel()
 {
-  _tput cuu1 >&2
-  selector -p redodel -m 10 -k _redo_key -i "$(_get_hist)"
+  _sel_tput cuu1 >&2
+  selector -p redodel -m 10 -k _redo_key -f - < <(_get_hist)
 }
 
 _redo_key()
 {
-  k="$1" cmd="${_aitems[$_nsel]}"
+  k="$1" cmd="$item"
   case "$k" in
     '[19~'|$'\x04'|'[3~') # F8 Ctl-D delete
       _redo_del "$cmd"
@@ -90,15 +90,15 @@ _redo_selector()
 {
   local _hist t l nl=$'\n'
   [ "$2" ] || local selected
-  [ "$BASH" ] && _tput el >&2 && printf "%s" "$1" >&2
+  [ "$BASH" ] && _sel_tput el >&2 && printf "%s" "$1" >&2
   printf "\n" >&2
-  selector -q -p redo -m 10 -k _redo_key -f - <<<"$(_get_hist |grep -F -- "$1" 2>/dev/null)" || selected="$1"
-  _tput cuu1 >&2
+  selector -q -p redo -m 10 -k _redo_key -f - < <(_get_hist |grep -F -- "$1" 2>/dev/null) || selected="$1"
+  _sel_tput cuu1 >&2
   # bash 3/4 bug repeating prompt/command
   [[ "$BASH_VERSION" = @(3.*|4.[0-3].*) ]] && {
     t=${PS1//$'\n'/}
     l=$(( ${#PS1} - ${#t} ))
-    [ "$l" -gt 0 ] && _tput cuu $l >&2
+    [ "$l" -gt 0 ] && _sel_tput cuu $l >&2
   }
   selected="${selected//↵ /$nl}"
   [ "$2" ] && return

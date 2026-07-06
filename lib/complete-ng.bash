@@ -13,10 +13,10 @@ _arrayread() {
 }
 
 _complete-ng_key() {
-  local k="$1" item="${_aitems[$_nsel]}"
+  local k="$1"
   case "$k" in
     '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
-      [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "${item%%$'\t'*}"
+      [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "$item"
     ;;
   esac
   return 2
@@ -40,7 +40,7 @@ _complete-ng() {
   ((${#COMPREPLY[@]} > 0)) || {
     type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
         compgen -f /non-existing-dir/ >/dev/null
-    _arrayread COMPREPLY <<<"$(compgen $opt -- "$word")"
+    _arrayread COMPREPLY < <(compgen $opt -- "$word")
   }
   [ "${#COMPREPLY[@]}" = 1 ] && COMPREPLY=("${COMPREPLY%%$'\t'*}") && return
   [ "$COMP_SORT" ] || sortcmd=(cat)
@@ -50,14 +50,14 @@ _complete-ng() {
     [ "$fn" ] && {
       type "compopt" >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
           compgen -f /non-existing-dir/ >/dev/null
-      _arrayread COMPREPLY <<<"$(compgen -f -- "$word")"
+      _arrayread COMPREPLY < <(compgen -f -- "$word")
     }
     [ ! "$COMPREPLY" ] && {
       printf 'Not found !\r' >&2
       sleep "0.2"
-      _tput "el" >&2
-      _tput "cuu1" >&2
-      _tput "cuf" "$((col-1))" >&2
+      _sel_tput "el" >&2
+      _sel_tput "cuu1" >&2
+      _sel_tput "cuf" "$((col-1))" >&2
       return 1
     }
   }
@@ -67,10 +67,10 @@ _complete-ng() {
   longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
   [ "$longword" ] || longword="$word"
   comphelp
-  SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -q -m 10 -k _complete-ng_key "${selopt[@]}" -i "$(printf "%s\n" "${COMPREPLY[@]}"|"${sortcmd[@]}")" -F "$longword" && COMPREPLY=("$selected") || COMPREPLY=()
+  SELECTOR_CASEI="$COMPLETE_NG_CASEI" selector -q -m 10 -k _complete-ng_key "${selopt[@]}" -F "$longword" -f - < <(printf "%s\n" "${COMPREPLY[@]}"|"${sortcmd[@]}") && COMPREPLY=("$selected") || COMPREPLY=()
   #kill -WINCH $$ # force redraw prompt
-  _tput "cuu1" >&2
-  _tput "cuf" "$((col-1))" >&2
+  _sel_tput "cuu1" >&2
+  _sel_tput "cuf" "$((col-1))" >&2
   [ ! "${COMPREPLY[0]}" ] && {
     compopt +o "filenames" -o "nospace" 2>/dev/null
     [ "$word" != "$longword" ] && COMPREPLY=( "$longword" ) && return 0
