@@ -16,7 +16,7 @@ _parse_hist()
     { done[$0]=1 }
     gr && ! index($0,gr) { next }
     { sub("\n$","");gsub("\n",ret);print substr($0,2) }
-  ' RS='\t' ret='↲ ' gr="$1"
+  ' RS='\t' ret='↲ ' gr="$1" 2>/dev/null
 }
 
 _get_hist()
