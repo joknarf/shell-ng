@@ -26,13 +26,17 @@ _get_hist()
     3.*|4.[01].*) # bug fc missing prev cmd
       HISTTIMEFORMAT=''
       history |awk '
-       /^ *[0-9]+  /{sub("^ *","",$0);printf("\n%s",$0);next}
-       {printf ret $0}
-      ' ret='↲ ' |sort -rn |sed -E 's/^[0-9]+  //' |awk '
-      BEGIN{done[""]=1}
-      $0 in done{next}
-      {done[$0]=1}
-      1'
+      NR==1{prelen=index($0,"1")}
+      /^ *[0-9]+  /{rec[++i]=substr($0,prelen+3);next}
+      {rec[i]=rec[i] ret $0}
+      END{ done[""]=1
+        for(j=i;j>0;j--) {
+          if (rec[j] in done) continue
+          if (gr && !index(rec[j],gr)) continue
+          print rec[j]
+          done[rec[j]]=1
+        }
+      }' ret='↲ ' gr="$1" 
       HISTTIMEFORMAT="$hst"
     ;; 
     "$BASH_VERSION#") fc -lnr -0 -10000 |_parse_hist "$1";;
