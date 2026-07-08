@@ -22,12 +22,7 @@ _maphelp()
 {
   declare -A help
   local opt desc k
-  _arrayread COMPREPLY < <(
-    case "$1" in
-        -) cat - ;;
-        *) TERM=dumb LC_ALL=C "$@" 2>&1;;
-    esac |_parse_help_desc
-  )
+  _arrayread COMPREPLY < <( [ "$1" = '-' ] && cat || TERM=dumb LC_ALL=C "$@" 2>&1 |_parse_help_desc )
 }
 
 comphelp() {

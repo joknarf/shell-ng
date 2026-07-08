@@ -48,8 +48,8 @@ _redo_del()
 {
   local todel="$1" i _hist
   [ "$todel" ] || return
-
-  # remove from HISTFILE
+  [ "$ZSH_VERSION" ] && {
+  # remove from HISTFILE as not possible in ZSH
   awk '{
     if (b) gsub(ret,"\n",todel)
     else gsub(ret, "\\\n",todel)
@@ -57,8 +57,8 @@ _redo_del()
       print(substr($0, 1, ind-1))
       $0 = substr($0, ind+length(todel)-1)
     }
-  }1' ret='↲ ' RS='\003' ORS='' b="$BASH" todel="\n${todel//\\/\\\\}\n" "${HISTFILE:=~/.bash_history}" >~/.redo_history.tmp 2>/dev/null && mv ~/.redo_history.tmp "${HISTFILE:=~/.bash_history}"
-
+  }1' ret='↲ ' RS='\003' ORS='' b="$BASH" todel="\n${todel//\\/\\\\}\n" "${HISTFILE:=~/.bash_history}" >~/.redo_history.tmp 2>/dev/null && mv ~/.redo_history.tmp "$HISTFILE"
+  }
   [ "$BASH" ] && {
     while read i 
     do
@@ -69,7 +69,8 @@ _redo_del()
         index(rec,todel) { nb[++i]=substr($0,1,prelen)+0 }
         END{ for (j=i;j>0;j--) print nb[j] }
       ' todel="${todel//\\/\\\\}"
-   )
+    )
+    history -w
   }
   # use setopt appendhistory + setopt incappendhistory
   [ "$ZSH_VERSION" ] && builtin fc -p $HISTFILE $HISTSIZE $SAVEHIST #not working in zle call
@@ -78,7 +79,7 @@ _redo_del()
 redodel()
 {
   _sel_tput cuu1 >&2
-  selector -p redodel -m 10 -k _redo_key -f - < <(_get_hist)
+  selector -p redodel -m 10 -k _redo_key -f <(_get_hist)
 }
 
 _redo_key()
@@ -97,7 +98,7 @@ _redo_selector()
   [ "$2" ] || local selected
   [ "$BASH" ] && _sel_tput el >&2 && printf "%s" "$1" >&2
   printf "\n" >&2
-  selector -q -p redo -m 10 -k _redo_key -f - < <(_get_hist "$1") || selected="$1"
+  selector -q -p redo -m 10 -k _redo_key -f <(_get_hist "$1") || selected="$1"
   _sel_tput cuu1 >&2
   # bash 3/4 bug repeating prompt/command
   [[ "$BASH_VERSION" = @(3.*|4.[0-3].*) ]] && {
