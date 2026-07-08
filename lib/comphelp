@@ -18,11 +18,17 @@ _puppet_cmd_help() {
   done < <(puppet help |grep '    [[:alnum:]]')
 }
 
+_comp_parse_cmdin() {
+  case "$1" in
+    -) _parse_help_desc;;
+    *) TERM=dumb LC_ALL=C "$@" 2>&1 |_parse_help_desc;;
+  esac
+}
 _maphelp()
 {
   declare -A help
   local opt desc k
-  _arrayread COMPREPLY < <( [ "$1" = '-' ] && cat || TERM=dumb LC_ALL=C "$@" 2>&1 |_parse_help_desc )
+  _arrayread COMPREPLY < <( _comp_parse_cmdin "$@" )
 }
 
 comphelp() {
