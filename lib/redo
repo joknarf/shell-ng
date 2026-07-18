@@ -16,7 +16,7 @@ _parse_hist() {
     gr && ! index($0,gr) { next }
     { sub("\n$","");gsub("\n",ret);print substr($0,2) }
   ' RS='\t' ret='↲ ' gr="$1" 2>/dev/null
-} 
+}
 
 [[ $OS = Windows* ]] && _parse_hist() {
   local rec gr="$1"
@@ -48,9 +48,9 @@ _get_hist()
           print rec[j]
           done[rec[j]]=1
         }
-      }' ret='↲ ' gr="$1" 
+      }' ret='↲ ' gr="$1"
       HISTTIMEFORMAT="$hst"
-    ;; 
+    ;;
     "$BASH_VERSION#") fc -lnr -0 -10000 |_parse_hist "$1";;
     "#$ZSH_VERSION") _parse_hist "$1" <<<$'\t '"${(pj:\n\t :)history}";;
   esac
@@ -72,7 +72,7 @@ _redo_del()
   }1' ret='↲ ' RS='\003' ORS='' b="$BASH" todel="\n${todel//\\/\\\\}\n" "${HISTFILE:=~/.bash_history}" >~/.redo_history.tmp 2>/dev/null && mv ~/.redo_history.tmp "$HISTFILE"
   }
   [ "$BASH" ] && {
-    while read i 
+    while read i
     do
       history -d $i
     done < <(HISTTIMEFORMAT='' history| awk '
@@ -171,7 +171,7 @@ _redo_binds()
     bind_redo='\eA'"'"'\eI.\eI\C-xs'"'"'\C-xm\e0xi\C-xc\ei.\C-xk\"$(_redo_selector '"'"'\C-y\C-h'"'"')\"\C-xe\eI\C-xx\eA\C-xr'
     # version not taking parameter from current command line:
     #bind -m vi-insert '"\C-r": "\C-xd$(_redo_selector)\e0i\C-xx\C-xr"'
-    bind -m vi-insert '"\C-r": "'"$bind_redo"'"' # ctl r    
+    bind -m vi-insert '"\C-r": "'"$bind_redo"'"' # ctl r
     bind -m vi-insert '"\e/": "'"$bind_redo"'"'  # esc /
     bind -m vi-insert '"\e[Z": "'"$bind_redo"'"' # shift tab
     bind -m vi-command '"/": "'"A$bind_redo"'"'  # /
@@ -190,7 +190,7 @@ _redo_binds()
     # \C-k kill-line
     # safe param quoting (takes only current line until first simple quote)
 
-    bind -m emacs-standard '"\C-r": "\C-e'"'"'\C-a.\C-a\C-xs'"'"'\C-xm\C-a\C-xd\C-xc\C-b.\C-xk$(_redo_selector '"'"'\C-y\C-h'"'"')\C-k\C-a\C-xx\C-e\C-xr"'  
+    bind -m emacs-standard '"\C-r": "\C-e'"'"'\C-a.\C-a\C-xs'"'"'\C-xm\C-a\C-xd\C-xc\C-b.\C-xk$(_redo_selector '"'"'\C-y\C-h'"'"')\C-k\C-a\C-xx\C-e\C-xr"'
     bind -m emacs-standard '"\ex": "\C-r"'
     bind -m emacs-standard '"\e/": "\C-r"'
     bind -m emacs-standard '"\e[Z": "\C-r"'
