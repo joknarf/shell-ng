@@ -13,11 +13,11 @@ _arrayread() {
 }
 
 _complete-ng_key() {
-  local k="$1"
-  case "$k" in
+  case "$key" in
     '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
       [ "$COMP_DELFUNC" ] && $COMP_DELFUNC "$item"
     ;;
+    'alt-i') ((COMPLETE_NG_CASEI)) && COMPLETE_NG_CASEI=0 || COMPLETE_NG_CASEI=1;;
   esac
   return 2
 }
@@ -110,7 +110,7 @@ complete() {
 }
 
 _complete-ng_init() {
-  bind -v |grep -q 'completion-ignore-case on' && COMPLETE_NG_CASEI=true || COMPLETE_NG_CASEI=false
+  bind -v |grep -q 'completion-ignore-case on' && COMPLETE_NG_CASEI=1 || COMPLETE_NG_CASEI=0
   if cat <(:) 2>/dev/null && [ "${BASH_VERSION%%.*}" -ge 4 ];then
     source <(builtin complete |sed -n -e '/-F _complete-ng /d' -e '/-F/p')
   else # process substitution not working (ish/bash 3.2)

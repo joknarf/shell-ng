@@ -7,8 +7,7 @@
 : ${REDO_USER_CHAR:="$"}
 : ${REDO_ROOT_CHAR:="#"}
 
-_parse_hist()
-{
+_parse_hist() {
   awk '
     BEGIN{ done[""]=1 }
     $0 in done {next}
@@ -17,6 +16,19 @@ _parse_hist()
     gr && ! index($0,gr) { next }
     { sub("\n$","");gsub("\n",ret);print substr($0,2) }
   ' RS='\t' ret='↲ ' gr="$1" 2>/dev/null
+} 
+
+[[ $OS = Windows* ]] && _parse_hist() {
+  local rec gr="$1"
+  declare -A dup
+  while IFS= read -r -d $'\t' rec; do
+    ((${#rec})) || continue
+    ((${#dup["$rec"]})) && continue
+    [[ $rec != *$gr* ]] && continue
+    dup["$rec"]=1
+    rec=${rec//$'\n'/$'↲ '}
+    printf '%s\n' "${rec:1:-2}"
+  done
 }
 
 _get_hist()
@@ -84,10 +96,9 @@ redodel()
 
 _redo_key()
 {
-  k="$1" cmd="$item"
-  case "$k" in
-    '[19~'|$'\x04'|'[3~') # F8 Ctl-D delete
-      _redo_del "$cmd"
+  case "$key" in
+    '[19~'|'ctrl-d'|'[3~') # F8 Ctl-D delete
+      _redo_del "$item"
       ;;
   esac
   return 2

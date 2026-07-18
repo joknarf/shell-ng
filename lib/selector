@@ -8,7 +8,7 @@
 : "${SELECTOR_LINK_ICON:=}"
 : "${SELECTOR_ARCH_ICON:=}"
 : "${SELECTOR_MISS_ICON:=}"
-: "${SELECTOR_CASEI:=false}"
+: "${SELECTOR_CASEI:=0}"
 : "${SELECTOR_POWERLINE:=y}"
 : "${SELECTOR_COL_PROMPT:=30;90;180}" # blue
 : "${SELECTOR_COL_TEXT:=255;255;255}" # white
@@ -19,24 +19,40 @@
 : "${SELECTOR_COL_SELECTED:=42;221;244}" # light cyan
 : "${SELECTOR_COL_COMMENT:=168;110;2}" #
 : "${SELECTOR_COL_COMSEL:=222;203;49}" #
-: "${SELECTOR_USE_TPUT:=false}"        # use ansi
+: "${SELECTOR_COL_CASEI:=255;255;100}" # IGNORECASE
 
-$SELECTOR_USE_TPUT && alias _sel_tput=tput
-command -v whence >/dev/null || whence() { type -p "$@"; }
+[ "$SELECTOR_USE_TPUT" ] && alias _sel_tput=tput
+
+_sel_rdn='n'
+case "$BASH_VERSION$KSH_VERSION$ZSH_VERSION" in
+  '') return 1 2>/dev/null;exit 1;; # unsupported
+  "$BASH_VERSION") _sel_upper() { eval $1='"${'$1'^^}"'; }
+    _sel_keycode() { printf -v k '%d' "'$key"; }
+    whence() { type -p "$@"; }
+  ;;
+  "$ZSH_VERSION") _sel_upper() { eval $1='"${(U)'$1'}"'; }
+    eval '_sel_keycode() { k=$((#key)); }'
+    _sel_rdn='k'
+  ;;
+  "$KSH_VERSION") _sel_upper() { eval typeset -u u='"$'$1'"; '$1='"$u"'; }
+    _sel_keycode() { k=$(printf '%d' "'$key"); }
+  ;;
+esac
+
 read _sel_stty < <(whence gnustty stty)
 read _sel_lesspipe < <(whence lesspipe.sh lesspipe)
 _sel_lesspipe="${_sel_lesspipe##*/}"
 [ "$_sel_lesspipe" ] && _sel_lessopen="|$_sel_lesspipe %s"
-_sel_tmout=0.001
-[ "$KSH_VERSION" ] && _sel_tmout=0.01
+_sel_tmout=0.01
 [[ "$BASH_VERSION" = 3.* ]] && _sel_tmout=1
+_sel_letters='abcdefghijklmnopqrstuvwxyz'
 
 
 _sel_tput() {
     case "$1" in
         # -------- Erase eol/eos ----------
         el)  printf '\e[K' ;;
-        ed)    printf '\e[J' ;;
+        ed)  printf '\e[J' ;;
         # -------- Cursor movement --------
         cuu) printf '\e[%dA' "${2:-1}" ;;
         cud) printf '\e[%dB' "${2:-1}" ;;
@@ -63,17 +79,17 @@ _sel_tput() {
 }
 
 _sel_probe_smam() {
-  typeset row col o=n
-  [ "$ZSH_VERSION" ] && o=k
+  typeset row col
+  SEL_SMAM=0
   printf '\e7\e[?7l\e[%dG  \e[6n' "$COLUMNS" >/dev/tty
-  IFS= read -r$o 2 </dev/tty
-  IFS='[;' read -r -d R row col </dev/tty
+  IFS= read -r"$_sel_rdn" 2 -t 1 </dev/tty || return
+  IFS='[;' read -r -t 1 -d R row col </dev/tty
   printf '\e8\e[?7h' >/dev/tty
-  [ "$col" = "$COLUMNS" ] && SEL_SMAM=true || SEL_SMAM=false
+  [ "$col" = "$COLUMNS" ] && SEL_SMAM=1
 }
 
 _sel_tty_init() {
-  $tty_init && return
+  ((tty_init)) && return
   _stty_ori="$($_sel_stty -g </dev/tty 2>/dev/null)"
   $_sel_stty intr '' -echo </dev/tty 2>/dev/null
   [ "$LINES" ] || read -r LINES COLUMNS < <($_sel_stty size </dev/tty)
@@ -86,16 +102,16 @@ _sel_tty_init() {
   disp_item_sel="\n$bg${SELECTOR_COL_ARROW}m$wfg %*s $fg${SELECTOR_COL_ARROW}m\e[49m$pl$fg${SELECTOR_COL_SELECTED}m%-*s$fg${SELECTOR_COL_COMSEL}m %s\e[0m"
   disp_item="\n$fg${SELECTOR_COL_NUM}m %*s  $fg${SELECTOR_COL_ITEM}m%-*s$fg${SELECTOR_COL_COMMENT}m %s\e[0m"
   disp_form="$bg${SELECTOR_COL_PROMPT}m$wfg %s $fg${SELECTOR_COL_PROMPT}m$bg${SELECTOR_COL_TOTAL}m$pl$wfg %s$fg${SELECTOR_COL_TOTAL}m\e[49m$pl\e[0m %s"
-  tty_init=true
+  ((SELECTOR_CASEI)) && disp_form="${disp_form//$SELECTOR_COL_TEXT/$SELECTOR_COL_CASEI}"
+  tty_init=1
 }
 
 _sel_tty_restore() {
-  break=1
-  $tty_init || return
+  ((tty_init)) || return
   _sel_tput ed >&2
   _sel_tput cnorm >&2
-  tty_init=false
   $_sel_stty $_stty_ori </dev/tty >/dev/null 2>&1
+  return 0
 }
 
 _sel_load_items() {
@@ -111,8 +127,8 @@ _sel_load_items() {
         _aitems[nb++]="$it"
         ((sec=SECONDS))
         ((s<sec)) && {
-          IFS= read -rs -n1 -t $_sel_tmout key </dev/tty
-          [[ $key == $'\003' ]] && { exec <&-; break; }
+          IFS= read -rs"${_sel_rdn}" 1 -t $_sel_tmout key </dev/tty
+          [[ $key == $'\003' ]] && break=1 && break
           ((s=SECONDS))
         }
     done
@@ -130,7 +146,7 @@ _sel_menuprompt()
   _sel_tty_init
   printf "\r"
   [ "$stream" ] && nbi='...'
-  $SEL_SMAM && w=1000 || { s="  $p  $_nsel/$nbi  "; ((w=COLUMNS-${#s})); }
+  ((SEL_SMAM)) && w=1000 || { s="  $p  $_nsel/$nbi  "; ((w=COLUMNS-${#s})); }
   printf "$disp_form" "$p" "$_nsel/$nbi" "${filt:0:$w}"
   _sel_tput el
   printf "\r"
@@ -163,7 +179,7 @@ _sel_showmenu()
   done
   w=${#nbitems}
   [ "$_sel_option" ] && ((maxw+=2))
-  $SEL_SMAM && {
+  ((SEL_SMAM)) && {
     maxiw=1000
     maxcw=1000
   } || {
@@ -226,19 +242,24 @@ _sel_init_filter() {
 
 _sel_items_filter()
 {
-  typeset filt="$1" gopt="" i j=1
-  [ "$SELECTOR_CASEI" = true ] && gopt="-i"
+  typeset filt="$1" j=1 i
   [ "$filt" ] && {
+    ufilt="$filt"
+    ((SELECTOR_CASEI)) && _sel_upper ufilt
     _sel_nbitems
     _nsel=''
     if ((${#filtered[@]}));then
       _sel_init_filter
       for i in "${prev_filtered[@]}";do
-        [[ ${_aitems[$i]} = *$filt* ]] && filtered[j++]=$i
+        uitem="${_aitems[i]}"
+        ((SELECTOR_CASEI)) && _sel_upper uitem
+        [[ $uitem = *$ufilt* ]] && filtered[j++]=$i
       done
     else
       for ((i=1;i<=nbitems;i++));do
-        [[ ${_aitems[i]} = *$filt* ]] && filtered[j++]=$i
+        uitem="${_aitems[i]}"
+        ((SELECTOR_CASEI)) && _sel_upper uitem
+        [[ $uitem = *$ufilt* ]] && filtered[j++]=$i
       done
     fi
     ((nbitems=${#filtered[@]}))
@@ -248,18 +269,28 @@ _sel_items_filter()
 
 _sel_readkey()
 {
-  typeset o=${1:-n} k 
-  IFS= read -rs"$o"1 key
-  [ "$key" = $'\x1b' ] && key="" && while :; do
-    k=""
-    LC_NUMERIC=C read -rs"$o"1 -t $_sel_tmout k 2>/dev/null # LC_NUMERIC=C for old ksh
-    [ ! "$k" ] && key=${key:-$'\x1b'} && break
-    key+="$k"
-    case "$key" in
-      '['[A-H]|'['*'~'|O[A-S]|'[1;2'[ABCDP-S]|$'\x1b') break;;
-    esac
-  done
-  #printf "%s" "$key"
+  typeset k
+  IFS= read -rs"$_sel_rdn" 1 key
+  case "$key" in
+    $'\x1b')
+      key=''
+      while ((break==0)); do
+        k=''
+        LC_NUMERIC=C read -rs"$_sel_rdn" 1 -t $_sel_tmout k 2>/dev/null # LC_NUMERIC=C for old ksh
+        [ ! "$k" ] && key=${key:-$'\x1b'} && break
+        key+="$k"
+        case "$key" in
+          '['[A-H]|'['*'~'|O[A-S]|'[1;2'[ABCDP-S]|$'\x1b') break;;
+          [a-z]) [[ $key = [[:upper:]] ]] && continue;key="alt-$key";break;;
+        esac
+      done
+    ;;
+    [[:graph:]]|' ') return;;
+    *)
+      _sel_keycode
+      ((k>0 && k<27)) && key="ctrl-${_sel_letters:$((k-1)):1}"
+    ;;
+  esac
 }
 
 _sel_item_expand() {
@@ -278,19 +309,6 @@ _sel_item_expand() {
   return 0
 }
 
-_sel_save_items() {
-  _items_ori=($_a "${_aitems[@]}")
-  prev_filtered=($_a "${filtered[@]}")
-  [ "$_a" ] && unset '_items_ori[0]' 'prev_filtered[0]'
-}
-
-_sel_restore_items() {
-  _aitems=($_a "{_itemsç_ori[@]}")
-  filtered=($_a "${prev_filtered[@]}")
-  [ "$_a" ] && unset '_aitems[0]' 'filtered[0]'
-  _sel_nbitems
-}
-
 _sel_item_arch() {
   case "$archive" in
     *.zip|*.jar|*.whl) item="${item#*[0-9][0-9]:[0-9][0-9]   }";;
@@ -305,8 +323,8 @@ _sel_view_file() {
   [[ $item = $type || ${#type} -gt 4 ]] && type=:sh || type=''
   [ "$archive" ] && {
     _force_nsel=$_nsel
-    exec </dev/tty
-    LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -RSc' less "$archive:$item$type" 2>/dev/null || return 3
+    LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -RSc' \
+      less "$archive:$item$type" </dev/tty >/dev/tty 2>/dev/null || return 3
     _sel_tput civis
     return 0
   }
@@ -325,14 +343,14 @@ _sel_view_file() {
       return 0
     ;;
   esac
-  exec <&1
-  LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -RSc' less "$item$type" 2>/dev/null
+  LESSQUIET=1 LESSOPEN="$_sel_lessopen" LESS='-+X -RSc' \
+    less "$item$type" </dev/tty >/dev/tty 2>/dev/null
   _sel_tput civis
   return 0
 }
 
 _sel_dirbrowse() {
-  typeset dir="${1:-.}" 
+  typeset dir="${1:-.}"
   dir=$(\cd "$dir" >/dev/null 2>&1||exit 1;pwd) || return 3
   _items_ori=("${_aitems[@]}")
   _sel_menuprompt 'Loading...'
@@ -346,11 +364,11 @@ _sel_dirbrowse() {
 }
 
 _sel_file_keys() {
-  typeset k="$1" ritem=$item
+  typeset ritem=$item
 
   [ "$archive" ] && _sel_item_arch || _sel_item_expand
-  case "$k" in
-    $'\t') # tab
+  case "$key" in
+    ctrl-i) # tab
       [ "$archive" ] && {
         selected="$_sel_lesspipe $(printf %q "$archive:$item")";
         return 1
@@ -405,19 +423,18 @@ _sel_file_keys() {
     ;;
     'OQ') # F2
       [ "$archive" ] && {
-        selected="$_sel_lesspipe $archive:$item"
+        selected="$_sel_lesspipe $(printf %q "$archive:$item")";
         return 1
       }
     ;;
-    'OR'|$'\x12') # F3 Ctrl-R
+    'OR'|'ctrl-r') # F3 Ctrl-R
       _sel_view_file
       return $?
     ;;
-    'OS'|$'\x05') # F4 Ctrl-E
+    'OS'|'ctrl-e') # F4 Ctrl-E
       _force_nsel=$_nsel
       [ -r "$item" ] && [ -f "$item" ] || return 0
-      exec <&1
-      ${EDITOR:-vi} "$item"
+      "${EDITOR:-vi}" "$item" </dev/tty >/dev/tty 2>/dev/tty
       _sel_tput civis
       return 0
     ;;
@@ -428,17 +445,16 @@ _sel_file_keys() {
 
 _sel_domenu()
 {
-  typeset o=n _force_nsel
+  typeset _force_nsel
   _nsel=1
-  [ "$ZSH_VERSION" ] && o=k
   ((nbitems)) || return 1
   ((nbitems<_maxlines)) && _sel_showmenu
-  while true
+  while ((break==0))
   do
-    _sel_readkey $o #$key
+    _sel_readkey #$key
     e=2
-    [ "$_sel_option" ] && { _sel_file_keys "$key" ; e=$?; }
-    [ "$e" = 2 ] && [ "$_keyfunc" ] && { $_keyfunc "$key"; e=$?; }
+    [ "$_sel_option" ] && { _sel_file_keys "$key"; e=$?; }
+    [ "$e" = 2 ] && [ "$_keyfunc" ] && { "$_keyfunc"; e=$?; }
     # 0: already managed / 1: managed exit / 2: default / 3: skip default
     case "$e" in
       0)
@@ -460,15 +476,18 @@ _sel_domenu()
         filter='';_sel_showmenu 1;;
       '[F'|'[C'|OC|OF|'[1;5F'|'[1;2C'|'[4~') #end or [shift] arrowright
         filter='';_sel_showmenu "$nbitems";;
-      '[6~'|$'\x06'|'[1;2B') #pagedn Ctl-F shift-down
+      '[6~'|ctrl-f|'[1;2B') #pagedn Ctl-F shift-down
         filter='';_sel_showmenu $((_nsel+lines-1));;
-      '[5~'|$'\x02'|'[1;2A') #pageup Ctl-B shift-up
+      '[5~'|ctrl-b|'[1;2A') #pageup Ctl-B shift-up
         filter='';_sel_showmenu $((_nsel-lines+1));;
+      $'\x0d'|''|ctrl-j|ctrl-m|ctrl-i) # enter tab
+        selected="$item"
+        break;;
       'OQ') # F2
-        selected="${_sel_lesspipe:-cat} ${_aitems[$_nsel]}"
+        selected="${_sel_lesspipe:-cat} $(printf %q "$item")"
         break
       ;;
-      '[19~'|$'\x04'|'[3~') # F8 Ctl-D delete
+      '[19~'|ctrl-d|'[3~') # F8 Ctl-D delete
         _sel_nbitems
         _sel_init_filter
         i=1
@@ -484,7 +503,7 @@ _sel_domenu()
         ((nbitems)) || break
         _sel_showmenu "$_nsel"
       ;;
-      $'\x7f'|$'\x08') #backspace
+      $'\x7f'|'ctrl-h') #backspace
         filter="${filter%?}"
         _sel_init_filter
         _nsel=''
@@ -493,14 +512,14 @@ _sel_domenu()
         ;;
       $'\xf8') #meta (macos)
         break;;
-      [[:graph:]]|" ") #text [a-zA-Z0-9/_?*\(\)\ .-])
+      [[:graph:]]|' ') #text [a-zA-Z0-9/_?*\(\)\ .-])
         filter+="$key"
         [ "$_autofilter" = y ] && {
           _sel_items_filter "$filter"
           ((nbitems)) || {
             printf "Not found !"
             _sel_tput el
-            read -rs"$o"1 -t 0.5 key 2>/dev/null
+            read -rs"$_sel_rdn"1 -t 0.5 key 2>/dev/null
             filter="${filter%?}"
             _nsel=''
             _sel_items_filter "$filter"
@@ -508,15 +527,22 @@ _sel_domenu()
           _sel_showmenu
         }
         _sel_menuprompt;;
-      $'\x0c') # Ctl-L => refresh
+      ctrl-l) # Ctl-L => refresh
         read -r LINES COLUMNS < <($_sel_stty size </dev/tty)
         _sel_showmenu;;
-      $'\x01') # Ctl-A => all
+      ctrl-a) # Ctl-A => all
         _maxlines=''
         _sel_showmenu;;
-      $'\x0d'|''|$'\n'|$'\t') # enter tab
-        selected="$item"
-        break;;
+      alt-i)
+        ((SELECTOR_CASEI)) && {
+          disp_form="${disp_form//$SELECTOR_COL_CASEI/$SELECTOR_COL_TEXT}"
+          SELECTOR_CASEI=0
+        } || {
+          disp_form="${disp_form//$SELECTOR_COL_TEXT/$SELECTOR_COL_CASEI}"
+          SELECTOR_CASEI=1
+        }
+        filter='';_sel_showmenu
+        ;;
       *) break;
     esac
   done
@@ -528,16 +554,16 @@ function selector
   typeset prompt filter
   typeset bg="\e[48;2;" fg="\e[38;2;" pl=""
   typeset wfg="$fg${SELECTOR_COL_TEXT}m"
-  typeset _items _aitems _maxlines _autofilter _keyfunc _sel_option _nsel=1 _items_ori disp_item_sel disp_item disp_form key nbitems _find_type _path_fprefix _path_rprefix _last_nsel _last_items _last_items_ori e archive quiet shift stream _a filtered prev_filtered depth=1 tty_init=false _stty_ori i j lines cur item ritem itemfile
+  typeset _items _aitems _maxlines _autofilter _keyfunc _sel_option _nsel=1 _items_ori disp_item_sel disp_item disp_form key nbitems _find_type _path_fprefix _path_rprefix _last_nsel _last_items _last_items_ori e archive quiet=0 shift stream _a filtered prev_filtered depth=1 tty_init=0 _stty_ori i j lines cur item ritem itemfile uitem ufilt break=0
   [ "$ZSH_VERSION" ] || _a='_'
+  ((SELECTOR_CASEI)) || SELECTOR_CASEI=0
   prompt='select'
   selected=''
   _autofilter=y
   _powerline="$SELECTOR_POWERLINE"
   _keyfunc=""
   _sel_option=""
-  quiet=false
-  
+ 
   while [ $# -gt 0 ]; do
     shift=2
     case "$1" in
@@ -548,10 +574,10 @@ function selector
         [ "$2" ] && _items="$2" || return 1
         ;;
       -f|--file)
-        [ "$2" ] && itemfile="$2";
+        [ "$2" ] && itemfile="$2" || return 1;
         ;;
       -m|--max)
-        [ "$2" ] && _maxlines="$(($2+1))" || return 1
+        [[ $2 =~ ^[1-9][0-9]*$ ]] || return 1; ((_maxlines=$2+1))
         ;;
       -P|--powerline)
         [ "$2" ] && _powerline="$2" || return 1
@@ -570,18 +596,23 @@ function selector
         _find_type=();set -A _find_type 2>/dev/null
         [ "$_sel_option" = dirnames ] && _find_type=(-type d)
         ;;
-      -q|--quiet) quiet=true;shift=1
+      -q|--quiet) quiet=1;shift=1
         ;;
-      *)
-        printf "usage: selector [-p <prompt>] -i <items>|-f <itemfile> [-P <y|n>] [-k <keyfunc>]\n"
-        printf "args :\n"
-        printf "%s\n" "  -p, --prompt          menu prompt"
-        printf "%s\n" "  -i, --items           menu items \n separated [description \t separated]"
-        printf "%s\n" "  -f, --file            file with items"
-        printf "%s\n" "  -F, --filter          regexp pattern filter items"
-        printf "%s\n" "  -P, --powerline       y or n, powerline symbol usage"
-        printf "%s\n" "  -a, --autofilter      y or n, filter at keystrokes (default y)"
-        printf "%s\n" "  -k, --keyfunc         Custom additional key function"
+      *) cat - <<'EOF'
+usage: selector [-p <prompt>] [-P <y|n>] [-k <keyfunc>] [-m <max>] [-o <opt>] -i <items>
+       selector [-p <prompt>] [-P <y|n>] [-k <keyfunc>] [-m <max>] [-o <opt>] -f <itemfile>
+args :
+  -p, --prompt          <prompt> menu prompt
+  -i, --items           <items> menu items \n separated [description \t separated]
+  -f, --file            <file> file with items or - for stdin
+  -F, --filter          <text> initial value of filter text (no initial filtering)
+  -P, --powerline       <y|n>, powerline symbol usage
+  -a, --autofilter      <y|n>, filter at keystrokes (default y)
+  -k, --keyfunc         <keyfunc> Custom additional key function (using selector as function)
+  -m, --max             <max> max number of items displayed
+  -o, --option          <dirnames>|<filenames> render icons/browse
+  -q, --quiet           silent selected item output
+EOF
         return 1
         ;;
     esac
@@ -593,21 +624,26 @@ function selector
     '') _sel_load_items <<<"$_items" >&2;;
     *)  _sel_load_items <"$itemfile" >&2;;
   esac
+  ((break)) && { selected=''; _sel_tty_restore; return 1; }
   [ ! "$selected" ] && {
-    [ -t 0 ] || exec </dev/tty
-    [ "$__sel_lc" ] && LC_ALL="$__sel_lc" _sel_domenu >&2 || _sel_domenu >&2
+    if [ "$__sel_lc" ]; then
+      LC_ALL="$__sel_lc" _sel_domenu </dev/tty >&2
+    else
+      _sel_domenu </dev/tty >&2
+    fi
   }
   _sel_tty_restore
   selected="${selected%%$'\t'*}"
   [ "$selected" ] || return 1
-  $quiet || printf "%s" "$selected"
+  ((quiet)) || printf "%s" "$selected"
   return 0
 }
-
 
 [[ "$LANG" = *UTF-8 ]] || {
   type locale >/dev/null 2>/dev/null && locale -a |grep -iq "en_US.UTF-*8" && __sel_lc=en_US.UTF-8 || __sel_lc=C.UTF-8
 }
-[ "$1" ] && { selector "$@"; exit $?; }
-:
+
+# assume exec selector is using bash sheebang
+(return 0 2>/dev/null) && return 0
+selector "$@"
 

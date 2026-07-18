@@ -83,10 +83,8 @@ function cdselect
 # selector custom keys
 _cd_keys()
 {
-  typeset k="$1"
-
-  case "$k" in
-    '[19~'|$'\x04'|'[3~') # F8 Ctl-D Del
+  case "$key" in
+    '[19~'|ctrl-d|'[3~') # F8 Ctl-D Del
       _sel_item_expand
       cddelete "$item"
     ;;
