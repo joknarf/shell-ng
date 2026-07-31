@@ -177,7 +177,7 @@ _cdhist_cd() {
     type compopt >/dev/null 2>&1 && compopt -o filenames 2>/dev/null || \
         compgen -f /non-existing-dir/ >/dev/null
     [ "$word" = ".." ] && word="../"
-    _item_expand "$word";dir="$item"
+    _sel_item_expand "$word";dir="$item"
     [[ "$word" = */* ]] && prefix="${word%/*}/" 
     word="${dir##*/}"
     [[ "$dir" = */* ]] && dir="${dir%/*}" || dir='.'
