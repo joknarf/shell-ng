@@ -140,7 +140,7 @@ function ps1_pwline {
         c = "black red green yellow blue magenta cyan white"
         split(c, co)
         if (col) init_rbg()
-	else init_8col()
+	      else init_8col()
 
         colors["reset_all"] = csi "0m" k
         colors["reset"] = csi "39m" k
@@ -200,7 +200,7 @@ function ps1_pwline {
             if (txt[i] == "|") {
                 printf("%s", colors["black"])
                 emptywidth = columns - width -1 # avoid last column for resize
-                for(j=txtc-1;j>i;j--) {
+                for(j=txtc;j>i;j--) {
                     if (txt[j] in sym)
                         if (emptywidth - length(txt[j-1]) > 2+swidth[j])
                             emptywidth -= swidth[j]
@@ -211,7 +211,7 @@ function ps1_pwline {
                     else
                         delete txt[j]
                 }
-                printf("\r");printf("\033[%dC ", width+emptywidth)
+                printf("\r");printf("%s%dC ", csi, width+emptywidth)
                 continue
             }
             if (txt[i] == symb[i]) { bgs[i]="reset"; width+=swidth[i] }
@@ -220,6 +220,7 @@ function ps1_pwline {
             if (rev[symb[i]]) {
                 printf("%s", colors[bgs[i]] sym[symb[i]])
                 if (txt[i] != symb[i]) {
+                    if (width>=columns) txt[i]=substr(txt[i],0,columns-width-1)
                     printf("%s", colors[fgs[i]] colors["b"bgs[i]] icos[i] " " txt[i] " " colors[bgs[i]])
                 }
             } else {
@@ -260,9 +261,9 @@ function ps1_userhost {
 function ps1_cwd {
     typeset spwd cols
     spwd=$PWD
-    cols=${COLUMNS:-80}
+    cols="${COLUMNS:-80}"
     case "$PWD" in "$HOME"|"$HOME"/*) spwd="~${PWD#"$HOME"}";; esac
-    [ ${#spwd} -gt $(($cols-30)) ] && spwd="${spwd:0:7}...${spwd:$((${#spwd}-$cols-40))}"
+    ((${#spwd} > (cols-30))) && spwd="${spwd:0:7}...${spwd:$((${#spwd}-$cols+40))}"
     echo "$spwd"
 }
 
@@ -404,7 +405,6 @@ function ps1_prompt {
             post = "${_:$((__ps1_cmd=\\#, __ps1_sec=-1, 0)):0}\\]"
             cmd["exit_status"] = "$(ps1_exit_status $? \\#)"
             cmd["userhost"] = "\\u@\\h"
-            cmd["cwd"] = "\\w"
             cmd["time"] = "\\A"
             cmd["prompt"] = "\\$"
         } else if (zsh) {
