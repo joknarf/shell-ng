@@ -199,7 +199,7 @@ function ps1_pwline {
             if (txt[i] == "" ) continue
             if (txt[i] == "|") {
                 printf("%s", colors["black"])
-                emptywidth = columns - width -1 # avoid last column for resize
+                emptywidth = columns - width #-1 # avoid last column for resize
                 for(j=txtc;j>i;j--) {
                     if (txt[j] in sym)
                         if (emptywidth - length(txt[j-1]) > 2+swidth[j])
@@ -211,7 +211,7 @@ function ps1_pwline {
                     else
                         delete txt[j]
                 }
-                printf("\r");printf("%s%dC ", csi, width+emptywidth)
+                printf("\r");printf("%s%dC ", csi, width+emptywidth+1)
                 continue
             }
             if (txt[i] == symb[i]) { bgs[i]="reset"; width+=swidth[i] }
