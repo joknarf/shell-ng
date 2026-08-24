@@ -28,6 +28,7 @@ _maphelp()
 {
   declare -A help
   local opt desc k
+  selopt=()
   _arrayread COMPREPLY < <( _comp_parse_cmdin "$@" )
 }
 
@@ -72,6 +73,7 @@ comphelp() {
         return
       }	
       [ "$COMP_CWORD" = 1 ] && {
+        selopt=()
         for ((i=0;i<${#COMPREPLY[@]};i++));do
           git_cmd="${COMPREPLY[$i]}"
           git_help="${_git_help[${git_cmd% }]}"
@@ -93,6 +95,7 @@ comphelp() {
         return
       }
       [ "$COMP_CWORD" = 1 ] && {
+        selopt=()
         for ((i=0;i<${#COMPREPLY[@]};i++));do
           _cmd="${COMPREPLY[$i]}"
           COMPREPLY[$i]="$_cmd"$'\t'"${_puppet_help[${_cmd% }]}"
