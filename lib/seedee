@@ -44,7 +44,7 @@ function cdpush {
   }
   \cd "$@" || return $?
   printf "%s\n" "$PWD" >"$cdhf.tmp"
-  grep -Fxv -- "$PWD" "$cdhf" >>"$cdhf.tmp"
+  \grep -Fxv -- "$PWD" "$cdhf" >>"$cdhf.tmp"
   [ -s "$cdhf.tmp" ] && \mv "$cdhf.tmp" "$cdhf"
   return 0
 }
@@ -52,7 +52,7 @@ function cdpush {
 function cddelete
 {
   typeset cdhf=${CDHISTFILE:-~/.cd_history}
-  grep -Fxv -- "$1" "$cdhf" >"$cdhf.tmp"
+  \grep -Fxv -- "$1" "$cdhf" >"$cdhf.tmp"
   [ -s "$cdhf.tmp" ] && \mv "$cdhf.tmp" "$cdhf"
 }
 
@@ -244,7 +244,7 @@ function cdsub {
   [ "$2" ] && gr=$($awk 'BEGIN{OFS=".*";for(i=1;i<ARGC;i++) $i=ARGV[i];print}' "$@")
   gr="${gr%/}"
   cdselect "$CDNBDIRS" < <(find -L "$orig" -xdev -mindepth 1 -maxdepth "$depth" -type d -print 2>/dev/null|\
-    grep -- "$gr" 2>/dev/null|sed -e 's#^\./##'|sort)
+    \grep -- "$gr" 2>/dev/null|sed -e 's#^\./##'|sort)
 }
 
 # use locate to get directories
