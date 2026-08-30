@@ -61,7 +61,7 @@ _complete-ng() {
       return 1
     }
   }
-  [[ $(compopt) = *-o\ filename* ]] || selopt=()
+  [[ $(compopt 2>/dev/null) = *-o\ filename* ]] || selopt=()
   ((COMP_CWORD==-1)) && compopt +o filenames # -1 empty command
   # longest common prefix
   longword="$(printf "%s\n" "${COMPREPLY[@]}"|sed -e 's/\t.*//' -e '$!{N;s/^\(.*\).*\n\1.*$/\1\n\1/;D;}')"
