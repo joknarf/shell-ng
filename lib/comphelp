@@ -67,11 +67,13 @@ comphelp() {
       local git_cmd i git_help
       (( ${#_git_help[@]} == 0 )) && _git_cmd_help
       [[ $opts = -* ]] && {
+        selopt=()
         git_cmd="${COMP_WORDS[1]}"
         [ "${_git_help[$git_cmd]}" ] && _maphelp "$cmd" help "$git_cmd"
         return
       }	
       [ "$COMP_CWORD" = 1 ] && {
+        selopt=()
         for ((i=0;i<${#COMPREPLY[@]};i++));do
           git_cmd="${COMPREPLY[$i]}"
           git_help="${_git_help[${git_cmd% }]}"
@@ -87,12 +89,14 @@ comphelp() {
       (( ${#_puppet_help[@]} == 0 )) && _puppet_cmd_help
       [[ $opts = -* ]] && {
         local _cmd i
+        selopt=()
         _cmd="${COMP_WORDS[1]}"
         [ "${_puppet_help[$_cmd]}" ] && \
             _maphelp - < <("$cmd" "$_cmd" -h 2>&1|sed -e 's/[*:]//g')
         return
       }
       [ "$COMP_CWORD" = 1 ] && {
+        selopt=()
         for ((i=0;i<${#COMPREPLY[@]};i++));do
           _cmd="${COMPREPLY[$i]}"
           COMPREPLY[$i]="$_cmd"$'\t'"${_puppet_help[${_cmd% }]}"
