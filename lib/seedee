@@ -264,7 +264,7 @@ function locatedir {
 
 function cdlocate {
   [ "$_cdpr" = 1 ] && _sel_tput el >&2
-  cdselect -1 < <(locatedir "$@")
+  cdselect "$CDNBDIRS" < <(locatedir "$@")
 }
 
 
