@@ -174,7 +174,7 @@ _sel_showmenu()
   maxw=0
   for ((i=min;i<=max;i++))
   do
-    ((${#filtered})) && ((j=filtered[i])) || ((j=i))
+    ((${#filtered[@]})) && ((j=filtered[i])) || ((j=i))
     item="${_aitems[$j]%%$'\t'*}"
     ((${#item} > maxw)) && maxw=${#item}
   done
