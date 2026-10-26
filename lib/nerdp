@@ -31,6 +31,8 @@ ps1_pfstyle="/auto:exit_status /lblack:elapse /blue:userhost >/auto:git_branch >
 : "${ps1_sshmode:=raw}" # pssh mode (1:raw 2:b64 3:cfg 4:url)
 : "${ps1_user_char:= •}" # standard user prompt end
 : "${ps1_root_char:= ▲}" # root user prompt end
+: ${ps1_user_color:=$'\033[0;92m'}
+: ${ps1_root_color:=$'\033[0;91m'}
 
 #=========================
 type typeset >/dev/null 2>&1 || alias typeset=local # ash
@@ -396,13 +398,16 @@ function ps1_venv {
 }
 
 function ps1_prompt {
-    typeset mksh
+    typeset mksh color
     [[ "$KSH_VERSION" = *MIRBSD* ]] && mksh=1
-    $ps1_awk -v bash="${BASH+1}" -v zsh="${ZSH_VERSION+1}" -v ash="${BB_ASH_VERSION+1}" -v mksh=$mksh 'BEGIN {
+    [ "$USER" = root ] && color="$ps1_root_color" || color="$ps1_user_color"
+    $ps1_awk -v bash="${BASH+1}" -v zsh="${ZSH_VERSION+1}" -v ash="${BB_ASH_VERSION+1}" -v mksh=$mksh -v color="$color" '
+    BEGIN {
         prompt="$(ps1_uidprompt)"
         if (bash) {
             pre = "\\[\033]0;\\h\007"
             post = "${_:$((__ps1_cmd=\\#, __ps1_sec=-1, 0)):0}\\]"
+            prompt = "\\["color"\\]"prompt"\\[\033[0m\\]"
             cmd["exit_status"] = "$(ps1_exit_status $? \\#)"
             cmd["userhost"] = "\\u@\\h"
             cmd["time"] = "\\A"
@@ -410,6 +415,7 @@ function ps1_prompt {
         } else if (zsh) {
             pre = "%{\033]0;%m\007"
             post = "%}"
+            prompt = "%{"color"%}"prompt"%{\033[0m%}"
             cmd["elapse"] = "$__ps1_elapse"
             cmd["exit_status"] = "$(ps1_exit_status $?)"
             cmd["userhost"] = "$(print -P %n@%m)"
@@ -418,6 +424,7 @@ function ps1_prompt {
         } else {
             pre="\033]0;$ps1_hostname\007\r"
             post="${_:$((__ps1_cmd=$HISTCMD , __ps1_sec=-1 , 0)):0}"
+            prompt="\001\r\001" color "\001" prompt "\001\033[0m\001"
             if (ash||mksh) post=""
             cmd["exit_status"] = "$(ps1_exit_status $? $HISTCMD)"
             cmd["time"] = "$(date +%H:%M)"
