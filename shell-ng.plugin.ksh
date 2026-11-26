@@ -3,4 +3,5 @@ _path_script="$(\cd "${.sh.file%/*}";pwd)"
 . $_path_script/lib/selector
 . $_path_script/lib/seedee
 PATH="$PATH:$_path_script"
+alias pgt='pgtree -M1f'
 unset _path_script
