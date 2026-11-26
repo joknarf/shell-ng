@@ -1,0 +1,690 @@
+#!/usr/bin/env bash
+#
+# coding: utf-8
+#
+# Program for showing the hierarchy of specific processes on a Unix computer.
+# Like pstree but with searching for specific processes with pgrep first and display
+# hierarchy of matching processes (parents and children)
+# should work on any Unix supporting commands :
+# pgrep
+# ps (ax|-e) -o pid=,ppid=,user=,comm=|ucomm=,stime=|start=,args=
+# (RedHat/CentOS/Fedora/Ubuntu/Suse/Solaris...)
+#
+
+# __author__ = "Franck Jouvanceau"
+# __copyright__ = "Copyright 2020, Franck Jouvanceau"
+# __license__ = "MIT"
+_pgt_initsys() {
+    local system
+    system=$(uname -s 2>/dev/null || echo "Linux")
+    PGT_PSOPT=(ax)
+    PGT_PGOPT=''
+    PGT_PGA='-a'
+    pgrep -a -P $$ >/dev/null 2>&1
+    (($?==2)) && PGT_PGA=''
+    case "$system" in
+        AIX)     PGT_PSOPT=(-e); PGT_STIME="start";;
+        Darwin)  PGT_STIME="start";PGT_PGOPT='-a';;
+        FreeBSD) PGT_PGOPT='-a';;
+        SunOS)   PGT_PSOPT=(-e); PGT_COMM="fname";;
+        CYGWIN*) PGT_PSOPT=(-e);;
+    esac
+}
+
+[ "$BASH_SOURCE" != "$0" ] && {
+type pgrep >/dev/null 2>&1 || return 0
+_pgt_initsys
+unset -f _pgt_initsys
+unset PGT_PGOPT PGT_COMM PGT_STIME
+# Bash completion
+_pgt_reply() {
+  local IFS=$'\n'
+  set -f
+  [ "$COMPLETE_NG_CASEI" ] && COMPREPLY=( $(sed -e 's/ *$//' -e 's/^ *//' $1) ) || COMPREPLY=( $(sed -e 's/\t.*//' -e 's/ *$//' -e 's/^ *//' $1) )
+  set +f
+}
+_pgtree()
+{
+   local word="${COMP_WORDS[COMP_CWORD]}" pgopt='-l' i pg p n=$'\n' IFS="$IFS"
+   [[ $word =  -* ]] && {
+     _pgt_reply <(pgtree -h |awk -F ' : ' '$1 ~ /^ *-/{sub("^ *","");opt=$1;sub(" .*","",opt);print opt"\t"substr($0,length($1)+4)}')
+     return 0
+   }
+   for ((i=1;i<COMP_CWORD;i++));do
+     case "${COMP_WORDS[i]}" in
+       -[uUtgGr]) ((i<COMP_CWORD-1)) && pgopt+=" ${COMP_WORDS[i]} ${COMP_WORDS[i+1]}";;
+       -T) pgopt+=" -w";;
+       -f) pgopt+=" $PGT_PGA -f";;
+       --) break;
+     esac
+   done
+   case "${COMP_WORDS[COMP_CWORD-1]}" in
+     -u) COMPREPLY=( $(compgen -W "$(ps "${PGT_PSOPT[@]}" -o user=)" -- $word) );return 0;;
+     -[Cw]) COMPREPLY=( $(compgen -W "yes no" -- $word) );return 0;;
+     -r) COMPREPLY=(D R S Z);return 0;;
+     -t) _pgt_reply <(who |awk '{ printf("%s\t%-10s %s %s %s\n", $2,$1,$3,$4,$5) }')
+         return 0
+     ;;
+     -[pP]) pg="$(pgrep $PGT_PGA -f $pgopt .)"
+         _pgt_reply <(awk '{sub("^ *","");print $1"\t"substr($0,length($1)+2)}' <<<"$pg")
+         return 0
+     ;;
+     -O) compopt -o nospace
+        local pso='stime lstart pcpu pmem rss vsz tty exe stat s uid sid time wchan' psopts
+        [[ "$word" = *,* ]] && p="${word%,*},"
+        for i in $pso;do [[ ,$p = *,$i,* ]] && continue;psopts+="$p$i ";done
+        COMPREPLY=( $(compgen -W "${psopts}" -- $word) )
+        return 0
+     ;;
+   esac
+   : ${word:=.}
+   compopt -o filenames
+   pg="$(pgrep $pgopt "$word")"
+   _pgt_reply <(awk '{sub("^ *","");nb[substr($0,length($1)+2)]++}
+      END{ for(i in nb) print i"\t"nb[i]}' <<<"$pg"|sed 's/[][\.*^$(){}?+|]/\\&/g')
+   return 0
+}
+complete -F _pgtree pgtree pgt
+return
+}
+
+usage() {
+    cat - <<'EOF'
+    usage: pgtree [-W|-M] [-RIya] [-C <when>] [-O <psfield>] [-c|-k|-K] [-1|-p <pid1>,...|<pgrep args>]
+
+    -M : interactive Mode
+    -I : use -o uid instead of -o user for ps command
+         (if uid/user mapping is broken ps command can be stuck)
+    -c : display processes and children only
+    -k : kill -TERM processes and children
+    -K : kill -KILL processes and children
+    -y : do not ask for confirmation to kill
+    -R : force use of internal pgrep
+    -C : color preference : y/yes/always or n/no/never (default auto)
+    -w : tty wrap text : y/yes or n/no (default y)
+    -W : watch and follow process tree every 2s
+    -a : use ascii characters
+    -T : display threads (ps must support -T option)
+    -O <psfield>[,psfield,...] : display multiple <psfield> instead of 'stime' in output
+                   <psfield> must be valid with ps -o <psfield> command
+
+    by default display full process hierarchy (parents + children of selected processes)
+
+    -p <pids> : select processes pids to display hierarchy (default 0)
+    -1 : display hierachy children of pid 1 (not including pid 0)
+    <pgrep args> : use pgrep to select processes (see pgrep -h)
+    -u : euid user list
+    -U : ruid user list
+    -x : exact match
+    -f : full args match
+    -r : runstates list
+    -P : ppid
+    -s : sid
+    -t : tty
+    -i : ignore-case
+    -g : pgrp
+    -G : rgid
+
+    found pids are prefixed with ►
+EOF
+    exit 1
+}
+
+del_item() {
+    local i a="$1" p="$2" del2="$3"
+    eval '
+        for ((i=0;i<${#'$a'[@]};i++));do
+            [ "${'$a'[i]}" = "$p" ] && {
+              unset '$a'[i]
+              ((del2)) && unset '$a'[i+1]
+              '$a'=("${'$a'[@]}")
+              return 0
+            }
+        done
+    '
+    return 1
+}
+toggle() {
+    local a="$1" p="$2"
+    del_item "$a" "$p" && return 1
+    eval "$a"'+=("$p")'
+    return 0
+}
+utrim() {
+    sort -u"$1" |sed -e 's/^ *//' -e 's/ *$//'
+}
+pgt_psmenu() {
+  local p="$1" pr="$2"
+  _sel_tty_restore
+  selector -p "$p $pr" -q -f "$3" 
+  _sel_tty_init
+  del_item pgrep_args "$p" 1
+  [[ ${pgrep_args[*]} =~ -[uUgGPrstF] ]] || pgrep_crit=0
+  [ "$selected" ] && pgrep_args+=($p "$selected") && pgrep_crit=1
+  pgt_items_filter "${pgrep_re[@]}"
+}
+pgt_key() {
+    case "$key" in
+        'OP'|'11~'|alt-h) # F1 
+            local t=$'\t'
+            _sel_tty_restore
+            selector -p "options" -q -f - <<EOF
+alt-u${t}-u effective user
+ctrl-u${t}-U real user
+alt-g${t}-g process group
+ctrl-g${t}-G real group
+ctrl-t${t}-t tty
+alt-t${t}-T toggle threads view
+alt-c${t}-c toggle children only
+alt-x${t}-x toggle exact match
+alt-f${t}-f toggle full command match
+alt-i${t}-i toggle case sensitive
+alt-o${t}-O add ps fields
+alt-k${t}-k kill process tree
+ctrl-k${t}-K kill -9 process tree
+alt-w${t}-W watch mode
+ctrl-l${t}refresh process tree
+EOF
+            _sel_tty_init
+            [ "$selected" ] || return 0
+            key="$selected"
+        ;;
+    esac
+    case "$key" in
+        'OT'|'[15~') # F5
+            pgt_items_filter "${pgrep_re[@]}"
+            return 0
+        ;;
+        ctrl-l)
+            pgt_items_filter "${pgrep_re[@]}"
+            return 2
+        ;;
+        ctrl-k|alt-k)
+            local p
+            [[ $item =~ (m|─)([0-9]+) ]] && p="${BASH_REMATCH[2]}"
+            ((p>1)) || return 0
+            pids=("$p")
+            [ "$key" = ctrl-k ] && sig=9 || sig=15
+            popt=1
+            _sel_tty_restore
+            stty sane
+            pgt </dev/tty
+            _sel_tty_init
+            sleep 0.5
+            sig=0;popt=0
+            pgt_items_filter "${pgrep_re[@]}"
+            return 0
+        ;;
+        ctrl-u|alt-u)
+            local p="-u"
+            [[ $key = ctrl-* ]] && p=-U
+            if command -v getent &>/dev/null ;then
+              pgt_psmenu "$p" user <(getent passwd $(ps "${PGT_PSOPT[@]}" -o "user=" |utrim)| awk -F: '{printf("%s\t%8s %s\n",$1, $3, $5)}')
+            else
+              pgt_psmenu "$p" user <(ps "${PGT_PSOPT[@]}" -o "user=" |utrim)
+            fi
+            return 0
+        ;;
+        ctrl-t)pgt_psmenu -t tty <(ps "${PGT_PSOPT[@]}" -o tty=|grep -Fv '?'| utrim); return 0;;
+        ctrl-g)pgt_psmenu -G group <(ps "${PGT_PSOPT[@]}" -o group=| utrim); return 0;;
+        alt-g) pgt_psmenu -g pgid <(ps "${PGT_PSOPT[@]}" -o pgid=| utrim n); return 0;;
+        alt-[ixf])
+            local p="-${key#*-}"
+            [ "$p" = -x ] && del_item pgrep_args -f
+            [ "$p" = -f ] && del_item pgrep_args -x
+            toggle pgrep_args "$p"
+            pgt_items_filter "${pgrep_re[@]}"
+            [ "$p" = -i ] || return 0
+        ;;
+        alt-[ct])
+            local p="-${key#*-}"
+            [ "$p" = -t ] && { p='-T'; toggle PGT_PSOPT -T && PGT_PID='spid'|| PGT_PID='pid'; }
+            toggle options "$p"
+            pgt_items_filter "${pgrep_re[@]}"
+            return 0
+        ;;
+        ctrl-o|alt-o)
+            local pso='stime lstart pcpu pmem rss vsz tty exe stat s uid sid time wchan'
+            _sel_tty_restore
+            selector -p "-O $xfields" -q -f <(compgen -W "$pso")
+            _sel_tty_init
+            [ "$selected" ] && xfields+=",$selected"
+            pgt_items_filter "${pgrep_re[@]}"
+            return 0
+        ;;
+        ctrl-[jm]|$'\0d')
+            local p
+            [[ $item =~ (m|─)([0-9]+) ]] && p="${BASH_REMATCH[2]}"
+            ((p>1)) || return 0
+            pids=("$p")
+            popt=1
+            pgt_items_filter ''
+            return 0
+        ;;
+        $'\x7f'|'ctrl-h') # backspace
+            [ ! "$filter" ] && popt=0
+        ;;
+        alt-w)
+            local i t
+            while :;do
+                help="[Watch mode] $(date)"
+                pgt_items_filter "${pgrep_re[@]}"
+                _sel_showmenu
+                for i in . . . .;do 
+                    sleep 0.45
+                    IFS= read -rsn 1 -t $_sel_tmout t && break
+                done
+                [ "$t" ] && break
+            done
+            help='[F1] shortcuts'
+            return 0
+        ;;
+    esac
+    return 2
+}
+
+pgt_pids() {
+    pgrep_re=("$@")
+    if [ "$PGT_PID" = 'spid' ] ;then
+        if ((popt));then
+            pids=( $(ps -T -p "${pids[@]}" -o spid=) )
+        else
+            [ ! "$pgrep_re" ] && ((pgrep_crit==0)) && return
+            pids=( $("$PGT_PGREP" $PGT_PGOPT -w "${pgrep_args[@]}" -- "${pgrep_re[@]}") )
+       fi
+    else
+        [ ! "$pgrep_re" ] && ((pgrep_crit==0)) && return
+        pids=( $("$PGT_PGREP" $PGT_PGOPT "${pgrep_args[@]}" -- "${pgrep_re[@]}") )
+    fi
+}
+
+PGT_PGREP=$(type -p pgrep)
+[ "$PGT_PGREP" ] || PGT_PGREP='_pgrep'
+ps -p $$ -o ucomm >/dev/null 2>&1 && PGT_COMM=ucomm
+[ ! "$PGT_COMM" ] && ps -p $$ -o comm >/dev/null 2>&1 && PGT_COMM=comm
+[ "$PGT_COMM" ] && {
+    ps -p $$ -o stime >/dev/null 2>&1 && PGT_STIME=stime
+    [ ! "$PGT_STIME" ] && ps -p $$ -o start >/dev/null 2>&1 && PGT_STIME=start
+    [ ! "$PGT_STIME" ] && PGT_STIME=time
+}
+# busybox no -p option
+[ ! "$PGT_COMM" ] && ! ps -p $$ >/dev/null 2>&1 && PGT_COMM=comm && PGT_STIME=etime
+_pgt_initsys
+
+[ -x /bin/nawk ] && awk=nawk || awk=awk
+pgtreeawk=$(cat <<'EOF'
+function runcmd(cmd) {
+    # run command
+    RS = "\003"    # Record Separator to EOT
+    $0 = ""        # if cmd has no output
+    cmd | getline
+    close(cmd)
+    RS="\n"
+    sub("\n$", "")  # Remove last \n
+    return $0
+}
+
+function ask(prompt) {
+    # input text
+    printf("%s", prompt)
+    getline answer
+    return answer
+}
+
+function treedisplay(use_ascii, use_color) {
+    # Tree display attributes
+    if (use_ascii) {
+        selected = ">"
+        child = "|_"
+        notchild = "| "
+        lastchild = "\\_"
+    } else {
+        selected = "►"
+        child = "├─"
+        notchild = "│ "
+        lastchild = "└─"
+    }
+    if (use_color) {
+        COLOR_FG = "\x1b[38;5;"
+        COLOR_RESET = "\x1b[0m"
+        col["pid"] = "12m"
+        col[fuser] = "11m"
+        col[fcomm] = "10m"
+        col[fstime] = "14m"
+        col["args"] = "15m"
+        col["%cpu"] = col["pcpu"] = "9m"
+        col["default"] = "13m"
+    }
+}
+
+function colorize(field, value) {
+    # colorize fields
+    if (field in col)
+        return COLOR_FG col[field] value COLOR_RESET
+    return COLOR_FG col["default"] value
+}
+
+function proctree(pids, use_ascii, use_color) {
+    # Manage process tree of pids
+    for (i in pids)
+        all_pids[pids[i]]=1
+    treedisplay(use_ascii, use_color)
+    get_psinfo()
+    build_tree()
+}
+function strip(str) {
+    sub("^ *", "", str)
+    sub(" *$", "", str)
+    return str
+}
+
+function dashes(len) {
+    if (len) return "=" substr(DASHES, 1, len)
+}
+
+function split_pinfo(line,  c, i) {
+    c=1
+    for (i=1; i<=nfields; i++) {
+        if (widths[i]) pinfo[fields[i]] = strip(substr(line, c, widths[i]))
+        else pinfo[fields[i]] = strip(substr(line, c))
+        c += widths[i] + 1
+    }
+}
+
+function get_psinfo() {
+    # parse unix ps command
+    sfields=fpid ",ppid," fuser "," fcomm ","
+    swidths="30,30,30,30,"
+    nxfields = 1
+    if (xfields) nxfields = split(xfields, fields, ",")
+    else         xfields = fstime
+    for (i=1; i<=nxfields; i++) swidths = swidths "50,"
+    sfields = sfields xfields ",args"
+    split(swidths, widths, ",")
+    nfields = split(sfields, fields, ",")
+    for (i=1; i<=nfields; i++)
+        psopt = psopt " -o " fields[i] dashes(widths[i])
+    out = runcmd("COLUMNS=130000 ps " psopt)
+    split(out, ps_out, "\n")
+    fields[1] = "pid"
+    for (i in fields)
+        ps_info[0,fields[i]] = " " fields[i]
+    ps_info[0, "pid"] = 0
+    ps_info[0, "ppid"] = -1
+    ps_info[1, "pid"] = 1
+    ps_info[1, "ppid"] = 0
+    ps_info[1, fuser] = "(root)"
+    ps_info[1, "comm"] = "[init]"
+    ps_info[1, "args"] = "init"
+    ps_info[1, "stime"] = "--:--"
+    children["0"] = "1"
+    children["-1"] = "0"
+    delete ps_out[1]
+    children[""]=""
+    for (i in ps_out) {
+        line = ps_out[i]
+        split_pinfo(line)
+        pid = pinfo["pid"]
+        if (pinfo["ppid"] == pid)
+            pinfo["ppid"] = "-1"
+        ppid = pinfo["ppid"]
+        if (pid == mypid || ppid == mypid)
+            continue
+        children[ppid] = append(children[ppid], pid)
+        pinfo[fields[3]] = "(" pinfo[fields[3]] ")"
+        sub(".*/", "", pinfo[fields[4]])
+        pinfo[fields[4]] = "[" pinfo[fields[4]] "]"
+        for (j in fields)
+            ps_info[pid,fields[j]] = pinfo[fields[j]]
+    }
+
+}
+
+function append(str, element) {
+   if (str=="")
+       return element
+   if (match(","str",",","element","))
+       return str
+   return str "," element
+}
+
+function joinkeys(array, separator,   i,j,s) {
+    for (i in array) {
+        j = j s i
+        s = separator
+    }
+    return j
+}
+
+function get_parents() {
+    # get parents list of pids
+    for (pid in all_pids) {
+        if (!((pid,"ppid") in ps_info))
+            continue
+        while ((pid,"ppid") in ps_info) {
+            ppid = ps_info[pid,"ppid"]
+            pids_tree[ppid] = append(pids_tree[ppid], pid)
+            last_ppid = pid
+            pid = ppid
+        }
+        top_parents = append(top_parents, last_ppid)
+    }
+}
+
+# recursive
+function children2tree(pids) {
+    # build children tree
+    while (pids!="") {
+        match(pids,",|$")
+        pid = substr(pids,1,RSTART-1)
+        pids = substr(pids,RSTART+1)
+        if (pid in pids_tree)
+            continue
+        if (pid in children) {
+            pids_tree[pid] = children[pid]
+            children2tree(children[pid])
+        }
+    }
+}
+
+function build_tree() {
+    #build process tree
+    for(i in pids) s_pids = append(s_pids, pids[i])
+    children2tree(s_pids)
+    get_parents()
+}
+
+function print_proc(pid, pre, print_it, last, next_p) {
+    # display process information with indent/tree/colors
+    next_p = ""
+    ppre = pre
+    if (pid in all_pids) {
+        print_it = 1
+        ppre = selected substr(pre, 2) # ⇒ 🠖 🡆 ➤ ➥ ► ▶
+    }
+    if (print_it) {
+        selected_pids[++nselpids] = pid
+        if (pre == " ")  # head of hierarchy
+            curr_p = next_p = " "
+        else if (last) {  # last child
+            curr_p = lastchild
+            next_p = "  "
+        } else { # not last child
+            curr_p = child
+            next_p = notchild
+        }
+        printf("%s%s", ppre, curr_p)
+        for (i=1; i<=nfields; i++)
+            if (fields[i] != "ppid")
+                printf("%s ", colorize(fields[i], ps_info[pid,fields[i]]))
+        printf("\n")
+    }
+    return next_p
+}
+
+# recursive
+function _print_tree(pids, print_it, pre,     pid, next_p) {
+    # display wonderful process tree
+    while (pids!="") {
+        match(pids,",|$")
+        pid = substr(pids,1,RSTART-1)
+        pids = substr(pids,RSTART+1)
+        next_p = print_proc(pid, pre, print_it, (pids == ""))
+        _print_tree(pids_tree[pid], (next_p != ""), pre next_p)
+    }
+}
+
+function print_tree(child_only, sig, confirmed ) {
+    # display full or children only process tree
+    if (sig)
+        kill_with_children(sig, confirmed)
+    else
+        _print_tree(top_parents, (! child_only), " ")
+}
+
+function kill_with_children(sig, confirmed,  i, kill_pids) {
+    # kill processes and children with signal
+    _print_tree(top_parents, 0, " ")
+    if (!nselpids) return
+    for (i=nselpids;i>0;i--) kill_pids=kill_pids" "selected_pids[i]
+    printf("kill -%s%s\n", sig, kill_pids)
+    if (! confirmed) {
+        answer = ask("Confirm (y/[n]) ? ")
+        if (answer != "y")
+            return
+    }
+    system("kill -"sig kill_pids)
+}
+
+function split_hash_keys(str, hash,  t) {
+    split(str, t)
+    for (i in t) hash[t[i]] = 1
+}
+
+function main(argv) {
+    # pgtree command line
+    selected_pids[0]="";delete selected_pids[0]
+    split_hash_keys(soptions, options)
+    split(spids, pids)
+    proctree(pids, ("-a" in options), (!("-C" in options)) )
+    print_tree(("-c" in options), sig, ("-y" in options) )
+}
+
+BEGIN {
+    DASHES="----------------------------------------------------"
+    main()
+}
+EOF
+)
+
+pgt() {
+    $awk -v mypid=$$ -v psopt="${PGT_PSOPT[*]}" -v fpid="$PGT_PID" -v fstime="$PGT_STIME" -v fcomm="$PGT_COMM" \
+        -v fuser="$PGT_USER" -v spids="${pids[*]}" -v sig="$sig" -v xfields="$xfields" -v soptions="${options[*]}" \
+        "$pgtreeawk" 
+}
+
+
+_pgrep() {
+    local opts=afxiwu: psfield="$PGT_COMM" icase exact=false
+
+    while getopts "$opts" opt; do
+        case $opt in
+            f) psfield='args' ;;
+            u) PGT_PSOPT=(-u "$OPTARG") ;;
+            i) icase=1 ;;
+            x) exact=true ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+    re="$1"
+    [ "$re" ] || re='.*'
+    $exact && re="^$1$" || re="$1"
+    printf -v w "%*s" 20 ''
+    w=${w// /-}
+    PGT_PSOPT+=(-o "$PGT_PID=$w" -o "$psfield")
+    ps "${PGT_PSOPT[@]}" | $awk '
+      NR==1 { next }
+      { pid=substr($0,1,20); gsub(" ","",pid) }
+      { info=substr($0,22); sub(" *$","",info) }
+      info ~ re { print pid }
+    ' re="$re" IGNORECASE="$icase"
+}
+
+pgt_menu() {
+    local sel="${0%/*}/../share/pgtree/selector"
+    [ -f "$sel" ] || sel="${0%/*}/selector"
+    . "$sel"
+    pgt_items_filter() {
+        [ "$1" ] || shift
+        ((popt)) || pids=($def_pids)
+        pgt_pids "$@"
+        printf -v prompt '%s ' "${options[@]}" "${pgrep_args[@]}"
+        prompt="pgtree ${prompt% }"
+        _sel_load_items < <(pgt)
+        filter="$pgrep_re"
+        ((${#_aitems[@]})) && _items_ori=("${_aitems[@]}")
+    }
+    selector -q -l pgt_items_filter -F "$pgrep_re" -p "pgtree ${pgrep_args[*]}" -k pgt_key -H '[F1] shortcuts' -f <(pgt)
+    exit 0
+}
+
+
+args="${*}"
+pids=(0)
+PGT_PID='pid'
+PGT_USER='user'
+pgrep_args=()
+options=()
+watch='false'
+color='auto'
+wrap='auto'
+menu=0
+sig=0
+popt=0
+def_pids=0
+xfields="$PGT_STIME"
+set -- $PGTREE "$@"
+argopt="MWRThIckKfxvinoyaA1C:r:p:u:U:g:G:P:s:t:F:O:w:"
+pgrep_crit=0
+while getopts "$argopt" opt; do
+    case $opt in
+        h) usage;;
+        M) menu=1;SEL_SMAM=1;;
+        I) PGT_USER='uid' ;;
+        C) color="$OPTARG" ;;
+        [cya]) options+=("-$opt") ;;
+        W) watch=true ;;
+        w) wrap="$OPTARG" ;;
+        T) [ "$PGT_STIME" = "etime" ] && PGT_PGREP='_pgrep' || PGT_PID='spid'; PGT_PSOPT+=(-T) ;;
+        k) sig=15 ;;
+        K) sig=9 ;;
+        p) pids=(${OPTARG//,/ });popt=1 ;;
+        O) xfields="$OPTARG" ;;
+        1) pids=(1);def_pids=1 ;;
+        R) PGT_PGREP='_pgrep' ;;
+        [Afxvino]) pgrep_args+=("-$opt") ;;
+        [uUgGPrstF]) pgrep_args+=("-$opt" "$OPTARG");pgrep_crit=1 ;;
+        *) pgrep_args+=("$opt") ;;
+    esac
+done
+case "$color" in
+    y|yes|always) ;;
+    n|no|never) options+=("-C") ;;
+    *) [ -t 1 ] || options+=("-C") ;;
+esac
+case "$wrap" in
+    y|yes) dowrap=true ;;
+    n|no) dowrap=false ;;
+    *) [ -t 1 ] && dowrap=true || dowrap=false ;;
+esac
+shift $((OPTIND - 1)); unset OPTIND
+pgrep_re=("$@")
+$dowrap && printf "\x1b[?7l" && trap 'printf "\x1b[?7h"' EXIT # rmam/smam
+while :;do
+    $watch && clear && echo "Every 2.0s: pgtree $args    $(date)"
+    pgt_pids "${pgrep_re[@]}"
+    ((menu)) && pgt_menu
+    pgt
+    $watch || break
+    sleep 2
+done
