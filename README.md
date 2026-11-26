@@ -16,6 +16,7 @@ All-in-one plugin optimized with joknarf shell command line customizations, incl
 | [redo](https://github.com/joknarf/redo)               | Command history interactive menu (bash/zsh)             | <kbd>Shit</kbd>-<kbd>Tab</kbd>        |
 | [seedee](https://github.com/joknarf/seedee)           | Directory history interactive menu (bash/zsh/ksh)       | <kbd>Shift</kbd>-<kbd>▼</kbd>         |
 | [complete-ng](https://github.com/joknarf/complete-ng) | Auto-completion interactive menu (bash/zsh)             | <kbd>Tab</kbd>                        |
+| [pgtree](https://github.com/joknarf/pgtreeawk)        | process hierarchy interactive browser/filter            | <kbd>Ctrl</kbd>-<kbd>p</kbd>          |
 
 ## Demo
 
