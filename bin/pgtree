@@ -84,7 +84,10 @@ _pgtree()
       END{ for(i in nb) print i"\t"nb[i]}' <<<"$pg"|sed 's/[][\.*^$(){}?+|]/\\&/g')
    return 0
 }
+alias pgt='pgtree -M1f'
 complete -F _pgtree pgtree pgt
+: "${PGT_BIND:=\C-p}"
+bind -x '"'"$PGT_BIND"'": "pgt"'
 return
 }
 
